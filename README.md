@@ -1,4 +1,3 @@
-````markdown
 # PSYCH 705: Statistics for Animal Behavior
 
 Course materials, R code, and exercises for Master's-level animal behavior 
@@ -63,4 +62,3 @@ email address].
 * Ask questions in class or via email if you get stuck.
 * Make regular commits to your personal GitHub repo to track your work.
 
-```
