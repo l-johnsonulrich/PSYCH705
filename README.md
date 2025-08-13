@@ -51,7 +51,7 @@ solutions):** MIT License (see `LICENSE` file)
 BY-NC-ND 4.0 (see `LICENSE_CC` file)
 
 For any use beyond the terms of these licenses, please contact 
-\l.johnsonulrich@gmail.com.
+l.johnsonulrich@gmail.com.
 
 ---
 
