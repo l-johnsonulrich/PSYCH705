@@ -34,7 +34,7 @@ recordings
 1. Clone this repo to your computer:
 ```bash
 git clone https://github.com/YourUsername/PSYCH705.git
-
+```
 2. Open RStudio and set your working directory to the repo folder.
 3. Start with `lessons/week01_intro_R/lesson_plan.md` and follow along 
 with the in-class exercises.
