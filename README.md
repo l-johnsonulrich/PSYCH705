@@ -50,8 +50,8 @@ solutions):** MIT License (see `LICENSE` file)
 * **Lecture notes, slides, recordings, and other non-code materials:** CC 
 BY-NC-ND 4.0 (see `LICENSE_CC` file)
 
-For any use beyond the terms of these licenses, please contact \[your 
-email address].
+For any use beyond the terms of these licenses, please contact 
+\l.johnsonulrich@gmail.com.
 
 ---
 
