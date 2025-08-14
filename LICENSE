@@ -1,6 +1,9 @@
 Scope of this License: 
-- Software refers to all code files, including R scripts (`.R`), R Markdown files (`.Rmd`), and any other programming scripts.
-- Materials refers to all non-code files, including PDF documents, PowerPoint presentations, Word documents, spreadsheets, and other written or visual resources.
+- Software refers to all code files, including R scripts (`.R`), R Markdown files 
+  (`.Rmd`), and any other programming scripts.
+- Materials refers to all non-code files, including PDF documents, PowerPoint 
+  presentations, Word documents, spreadsheets, and other written or visual 
+  resources.
 
 ---
 
@@ -28,7 +31,8 @@ SOFTWARE.
 
 ---
 
-Materials License — Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)
+Materials License — Creative Commons Attribution-NonCommercial-NoDerivatives 
+4.0 International (CC BY-NC-ND 4.0)
 
 Copyright (c) 2025 Lily Johnson-Ulrich
 
@@ -42,7 +46,7 @@ license, and indicate if changes were made.
 - NoDerivatives — If you remix, transform, or build upon the material, you
 may not distribute the modified material without my permission.
 
-For any use beyond these terms, please **contact
-l.johnsonulrich@gmail.com for permission.
+For any use beyond these terms, please contact l.johnsonulrich@gmail.com 
+for permission.
 
 License details: https://creativecommons.org/licenses/by-nc-nd/4.0/
