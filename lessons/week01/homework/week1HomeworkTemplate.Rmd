@@ -1,0 +1,45 @@
+---
+title: "week1Homework"
+author: "Lily Johnson-Ulrich"
+date: "2025-08-14"
+output: html_document
+---
+
+1. For this week's homework please go through the swirl tutorial 1.1.1 and 1.1.3. 
+
+1. R Programming: The basics of programming R
+    1. R Programming
+        1. Basic Building Blocks
+        3. Sequences of Numbers
+
+To get started, install and open the swirl package. 
+```{r, eval=FALSE}
+
+install.packages('swirl')
+
+library(swirl)
+
+```
+Note: You do NOT need to recieve credit on Coursera.org. 
+
+---
+
+Lesson 1.1.1.
+1. Create a new code chunk. 
+2. Create a new variable with any name that performs a mathematical function with two (or more) vectors. 
+3. Print your variable. 
+4. Hide any warnings from the knitted markdown document. 
+
+
+---
+
+Lesson 1.1.3. 
+1. Create a new code chunk.
+2. Create a variable with any name that contains a vector created using seq() or rep(). 
+4. Print the length of your variable. 
+
+
+
+---
+
+Last, save your homework file as week1Homework[LASTNAME].Rmd. Knit your homework file to HTML. Push **both** files to your week1 folder in your git repo. Come visit me during my office hours if you need help! M-W 4pm-5pm Rm 607HN.  
