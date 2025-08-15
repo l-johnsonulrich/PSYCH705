@@ -12,7 +12,7 @@ output: html_document
         1. Basic Building Blocks
         3. Sequences of Numbers
 
-To get started, install and open the swirl package. 
+To get started, install and open the swirl package. While base R lets you do quite a bit of coding, "R packages" are tools created by others that have more functions than just base R. Let's start by installing and running our first package "R Swirl" which will run an R tutorial in the Console. 
 ```{r, eval=FALSE}
 
 install.packages('swirl')
@@ -25,6 +25,7 @@ Note: You do NOT need to recieve credit on Coursera.org.
 ---
 
 Lesson 1.1.1.
+
 1. Create a new code chunk below. 
 2. Create a new variable with any name that performs a mathematical function with two (or more) vectors. 
 3. Print your variable. 
@@ -34,10 +35,10 @@ Lesson 1.1.1.
 ---
 
 Lesson 1.1.3. 
+
 1. Create a new code chunk below.
 2. Create a variable with any name that contains a vector created using seq() or rep(). 
 4. Print the length of your variable. 
-
 
 
 ---
