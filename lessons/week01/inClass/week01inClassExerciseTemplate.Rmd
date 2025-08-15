@@ -1,0 +1,106 @@
+---
+title: "Week 1 In-Class Exercises"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#this first chunk ensures that code is always visible for the entire knitted document for all code chunks (except for this very first chunk which has include turned to FALSE)
+```
+
+
+## Instructions
+
+* Complete each exercise **in this R Markdown file**.
+* Run your code to check your answers.
+* When finished:
+
+  1. Save this file and the knitted HTML file in your local Git repo in your week1 folder.
+  2. Commit with a message like `"Completed in-class exercises"`.
+  3. Push to GitHub.
+
+---
+
+## Exercise 1 — Markdown 
+
+1. Write your full name and student ID number. 
+2. Insert a picture of yourself from online (or from your computer, though we didn't cover how to do this in class!)
+3. Write a short sentence (about yourself, about this class, your MSc project, or stats). 
+4. Use at least two different headings and two different text emphasis. 
+
+
+[Your Markdown Here.]
+
+---
+
+## Exercise 2 — Basic arithmetic & variables
+
+1. Create a variable `x` with any value. 
+2. Create a variable `y` with any value. 
+3. Add x and y. 
+4. Multiple x and y. 
+5. Divide x and y (doesn't matter which is the numerator vs denominator).
+
+
+```{r exercise1}
+# Your code here
+```
+
+---
+
+## Exercise 3 — Vectors
+
+1. Create a numeric vector with at least 6 elements. 
+2. Display the **first** and **last** elements of your variable. 
+3. Display all elements of your variable that are greater than 5 (it's ok if this is 0).
+4. Add 1 to all elements in your vector. 
+5. Save a new variable with 2 added to all elements in your vector. 
+
+```{r exercise2}
+# Your code here
+```
+
+---
+
+## Exercise 4 — Dataframes
+
+1. Create a dataframe of any name with at least 3 columns and 5 rows. Two columns should be numeric.
+2. Print the entire dataframe
+3. Print the second column. 
+4. Print the last row. 
+5. Print the the last item in the bottom row (bottom right). 
+
+```{r exercise3}
+# Your code here
+```
+
+---
+
+## Exercise 5 — Paste
+
+1. Demonstrate the use of paste by combing two character elements. 
+2. Bonus: See if you can paste today's date and the current time with the some text "The current date and time is" such that is always displays the current date and time (even if you run the code tomorrow).
+
+```{r exercise4}
+# Your code here
+```
+
+---
+
+## Reflection
+
+Write 1–2 sentences about something you learned or found tricky today.
+
+```{r reflection, eval=FALSE}
+# Your reflection here
+```
+
+---
+
+## Final Step — Save & Push to GitHub
+
+1. Save your .Rmd file. 
+2. Knit to .html
+3. Push both files to your git repo under the week1 folder. 
