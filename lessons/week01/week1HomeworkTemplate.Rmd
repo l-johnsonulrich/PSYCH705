@@ -5,12 +5,35 @@ date: "2025-08-14"
 output: html_document
 ---
 
+Getting ready for next week's class: 
+
+Installing git and creating a github account: 
+
+1. Go to the Terminal tab next to the Console tab in bottom left. 
+2. Check if git is installed by running in Terminal tab: 
+
+      git --version
+        
+3. If a version is printed in Terminal, you're all set. A pop-up may ask if you want to install Command Line Tools, click Install (this will set up git). 
+
+If not install git from online: 
+        Windows: [click here](https://github.com/git-for-windows/git/releases/download/v2.51.0.windows.1/Git-2.51.0-64-bit.exe)
+        Mac: [click here](https://sourceforge.net/projects/git-osx-installer/files/latest/download)
+        The download should start automatically. 
+        
+4. Create a github account at https://github.com
+
+
+
+---
+
+
 1. For this week's homework please go through the swirl tutorial **1.1.1** and **1.1.3**. 
 
-1. R Programming: The basics of programming R
-    1. R Programming
-        1. Basic Building Blocks
-        3. Sequences of Numbers
+    1. R Programming: The basics of programming R
+        1. R Programming
+            1. Basic Building Blocks
+            3. Sequences of Numbers
 
 To get started, install and open the swirl package. While base R lets you do quite a bit of coding, "R packages" are tools created by others that have more functions than just base R. Let's start by installing and running our first package "R Swirl" which will run an R tutorial in the Console. The code to install and run swirl is below. Note that Swirl will run in just the console. After you've done 1.1.1 and 1.1.3 there are some exercises for you to do below. 
 ```{r, eval=FALSE}
@@ -45,4 +68,4 @@ Lesson 1.1.3.
 
 ---
 
-Last, save your homework file as week1Homework[LASTNAME].Rmd. Knit your homework file to HTML. Send both files to me at lily.johnson-ulrich@hunter.cuny.edu. Come visit me during my office hours if you need help! M-W 4pm-5pm Rm 607HN. 
+Last, save your homework file as week1Homework[LASTNAME].Rmd. Knit your homework file to HTML. Make sure your code runs and the knitted document looks good! Send ***both*** files to me at ***lily.johnson-ulrich@hunter.cuny.edu*** OR upload your files on Brightspace in the Week 1 Folder under Week 1 Homework. Come visit me during my office hours if you need help! M-W 4pm-5pm Rm 607HN. 
