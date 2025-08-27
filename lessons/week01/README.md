@@ -4,8 +4,6 @@
 By the end of this lesson, you will be able to:
 - Navigate RStudio and create basic R objects.
 - Understand the difference between R scripts and R Markdown.
-- Use GitHub to manage your own repository and push commits.
-- Run your first reproducible R script and push it to GitHub.
 
 ---
 
@@ -18,12 +16,6 @@ uploaded)*
 ## In-Class Activities
 1. RStudio basics: creating objects, data types, indexing.  
 2. Demonstration of R scripts vs R Markdown.  
-3. GitHub setup:  
-    - Clone your personal repo  
-    - Make your first commit and push
-    - Share the repo with your instructor  
-4. First reproducible script: create a simple dataset with numbers and 
-text and push to GitHub at 5 times while making edits.
 
 > **Tip:** Type along with the demo — don’t copy-paste blindly. Practicing 
 typing builds muscle memory in R.
@@ -33,7 +25,7 @@ typing builds muscle memory in R.
 ## Homework
 1. Create a new R Markdown file. 
 2. Complete the Swirl R intro exercises. Use multiple chunks.  
-3. Save and push your Swirl R exercises to GitHub.   
+3. Save and email me or upload to Brightspace.   
 
 ---
 
@@ -43,7 +35,5 @@ typing builds muscle memory in R.
 ---
 
 ## Notes / Tips
-- Check your email and GitHub for any updates.  
-- Make sure your GitHub repo is private (or public if instructed).  
-- Save all work in your personal repo to track progress.
+- Check your email, Brightspace, and GitHub for updates.  
 
