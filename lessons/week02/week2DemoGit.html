@@ -380,10 +380,13 @@ Console in the bottom left panel of R Studio.</li>
 <pre class="bash"><code>#Note: these are Terminal codes and they won&#39;t run without copying and pasting to Terminal and this is why eval=FALSE here. 
 
 #intial setting up of your git repo 
-git config --global user.name &quot;Your Name&quot;
-git config --global user.email &quot;you@example.com&quot;
+git config --global user.name &quot;Your Name&quot; #This is the name that will be attached to &quot;commits&quot; that you make, it doesn&#39;t have to be the same as your github username
+git config --global user.email &quot;you@example.com&quot; #this email should match a verified email on your github account 
+#hint: the global setting applies this to any and all repos on your computer 
+
+#copy the repo to your computer! you should copy and paste the HTTPS url from your repo page on github.com 
 git clone https://github.com/username/PSYCH705.git
-cd PSYCH705 
+cd PSYCH705 #navigate to the folder (for example)
 
 #common git commands in terminal 
 git status # tells you the status of the repo on your computer and whether it&#39;s up to date with the online repo 
@@ -448,6 +451,40 @@ people”</strong> button.<br />
 <li>You should see my username listed as “pending” until I accept</li>
 </ul></li>
 </ol>
+</div>
+<div id="saving-your-github.com-login-information-to-git-on-your-computer" class="section level2">
+<h2>Saving your github.com login information to git on your
+computer</h2>
+<div id="step-1.-generate-a-personal-access-token-pat-on-github" class="section level4">
+<h4>Step 1. Generate a Personal Access Token (PAT) on GitHub</h4>
+<ul>
+<li>Log into GitHub in a browser.</li>
+<li>Click on your profile picture → Settings.</li>
+<li>In the left menu, go to Developer settings → Personal access tokens
+→ Tokens (classic).</li>
+<li>Click Generate new token.</li>
+<li>Choose classic for simplicity.</li>
+<li>Give it a name like RStudio Git.</li>
+<li>Select scopes (permissions): for pushing code you only need ✅ repo
+✅ workflow (optional, for GitHub Actions)</li>
+<li>Click Generate token.</li>
+<li>Copy the token immediately (you won’t see it again!).</li>
+</ul>
+</div>
+<div id="step-2.-use-the-pat-in-rstudio-or-terminal" class="section level4">
+<h4>Step 2. Use the PAT in RStudio (or Terminal)</h4>
+<p>When you run your first git push from RStudio’s Terminal, Git will
+ask:</p>
+<pre class="bash"><code>Username for &#39;https://github.com&#39;: 
+Password for &#39;https://github.com&#39;: </code></pre>
+<p>You should enter:</p>
+<p>Username = your GitHub username (not email).</p>
+<p>Password = the PAT you just generated (paste it in). (Not your
+github.com password!)</p>
+<p>Git should automatically remember your credential on this computer
+and you shouldn’t have to run it again. If you run into errors with
+credentials and logins, have ChatGPT try to help you troubleshoot.</p>
+</div>
 </div>
 
 
