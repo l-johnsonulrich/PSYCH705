@@ -1,0 +1,277 @@
+---
+title: "week2DemoTidyR"
+output: html_document
+date: "2025-08-27"
+---
+
+# Overview
+
+Today we will:
+- Learn how to import messy datasets.
+- Explore the **tidyverse** (piping + basic `dplyr` verbs).
+- Create our first plot with **ggplot2**.
+- Apply these tools to clean & plot a behavioral dataset.
+
+---
+
+# Review
+- We know how three sets of syntax
+    - R Markdown (Rmd) for working with the text portion of our code 
+        - This is the "white" part of your Rmd Files 
+    - R code for working with data 
+        - This is the gray boxes 
+        - R code is run in the Console tab 
+    - Terminal/Git 
+        - This is for syncing our work with our repositories (repos) on github.com 
+        - Git commands are run in the Terminal tab
+        - We typically don't put any git commands in the Rmd file, we just use it for syncing 
+
+# Setup
+
+```{r, eval=FALSE}
+# Install/load tidyverse and ggplot2 if needed
+# install.packages("tidyverse")
+# install.packages("ggplot2")
+
+# Set a working directory 
+setwd("~/Dropbox/Documents_Hunter/Teaching/PSY705/lessons/week2/demo")
+
+#Navigate to your working directory
+
+```
+
+
+# Importing Data
+
+We’ll start with a messy behavioral dataset.
+
+The built-in airquality dataset in R comes from New York, May–September 1973.
+
+It was originally published in the New York State Department of Conservation (1973) report on daily air quality, and then reprinted in Chambers et al. (1983), Graphical Methods for Data Analysis.
+
+This is a "messy" version of the airquality dataset that is built in to base R. 
+
+```{r, eval=FALSE}
+library(tidyverse) #load the tidyverse library 
+
+?airquality
+
+# Example: pretend this is a file they download from course repo
+data <- read.csv("messy_airquality.csv")
+
+# Peek at the first few rows
+head(data)
+
+#convert to a "tibble"
+data <- as_tibble(data)
+data #view the data tibble and notice how what shows up in the console is much easier to look at than when we use head()
+
+#using "glimpse" to preview the dataframe
+glimpse(data)
+
+#we can also open the dataframe in R Studio
+
+#how many rows? 
+nrow(data)
+
+#how many columns? 
+length(data)
+
+#check how R has classified each variable 
+class(data$Ozone)
+class(data$Wind)
+class(data$MonthName)
+
+data$MonthName <- as.factor(data$MonthName)
+levels(data$MonthName) #look for the errors! 
+unique(data$MonthName) #does basically the same thing 
+
+# Use "Summary" to get an overview of the dataframe
+summary(data)
+#look for anything weird in the mins max NAs
+
+```
+
+# Cleaning Data with dplyr
+
+We’ll use the pipe (%>%) and some basic verbs:
+
+- select() – choose columns
+- filter() – choose rows
+- mutate() – create/fix columns
+- drop_na() - remove NA values 
+
+```{r, eval=FALSE}
+#using pipe %>% 
+
+#shows the number of unique values (similar to levels or unique) 
+data %>% distinct(MonthName)
+
+#just view or choose a few specific columns 
+data %>% select(MonthName, Day)
+
+#cleaning the data by filtering out impossible values 
+summary(data)
+
+#let's start with Ozone (good = 0-50; moderate = 51-100; unhealthy sensitive = 101-150; unhealthy = 151-200; very unhealthy = 201-300; hazardous = 301-500)  
+#999 is an improbable value and also looks like maybe it was used instead of NA 
+data %>%
+  filter(Ozone <= 500) #only 114 rows?! 
+
+data %>% 
+  filter(Ozone <= 500 | is.na(Ozone)) #151, now we've filtered both 999s 
+
+#do we want to save the tibble with these rows filtered? 
+#then we lose the data on Solar, Wind, and Temp for that day 
+
+#convert 999 to NAs instead 
+data %>% mutate(
+  Ozone = if_else(Ozone == "999", NA, Ozone))
+#save this "cleaned" data as a new tibble 
+data2 <- data %>% mutate(
+  Ozone = if_else(Ozone == "999", NA, Ozone))
+
+#what's next? 
+summary(data2) #new max ozone is 168
+#solar looks ok
+#wind looks ok 
+#Temp has a min of -100
+
+#how many chilly days?
+data2 %>% filter(Temp < 65)
+#how many cold days? 
+data2 %>% filter(Temp < 55)
+#two values in the negatives unlikely for the summer
+#let's conver to NAs as well 
+data2 <- data2 %>% mutate(
+  Temp = if_else(Temp < 55, NA, Temp)
+)
+summary(data2)
+unique(data$MonthName)
+
+#let's look at how many we have of each so we figure out which are typos
+#use n() which is a basic counting function 
+data2 %>% group_by(MonthName) %>% summarise(N=n())
+
+#fix the names with mutate() and case_when()
+#case_when() is a stacked if_else() 
+data2 %>% mutate(MonthName = case_when(
+  MonthName == "Agust" ~ "Aug",
+  MonthName == "Jnue" | MonthName == "June" ~ "Jun",
+  MonthName == "MAY" ~ "May",
+  MonthName == "JUL" | MonthName == "July" ~ "Jul",
+  MonthName == "Sept" ~ "Sep"
+)) %>%
+  group_by(MonthName) %>% summarise(N=n())
+#oops this doesn't run it turned them all into NAs 
+
+data2 %>% 
+  mutate(MonthName = case_when(MonthName == "Agust" ~ "Aug")) %>% 
+  group_by(MonthName) %>% summarise(N=n())
+#hm it ONLY changes Agust and everything else becomes NA 
+
+#need to add a catch-all for the rest of the possibilites
+data2 %>% mutate(MonthName = case_when(
+  MonthName == "Agust" ~ "Aug",
+  MonthName == "Jnue" | MonthName == "June" ~ "Jun",
+  MonthName == "MAY" ~ "May",
+  MonthName == "JUL" | MonthName == "July" ~ "Jul",
+  MonthName == "Sept" ~ "Sep",
+  TRUE ~ MonthName
+)) %>%
+  group_by(MonthName) %>% summarise(N=n())
+#this looks good! except Jul has 32 entries? 
+#go back and look at data2 before making this change 
+#JUL is actually still June 
+
+data2 %>% mutate(MonthName = case_when(
+  MonthName == "Agust" ~ "Aug",
+  MonthName == "Jnue" | MonthName == "June" ~ "Jun",
+  MonthName == "MAY" ~ "May",
+  MonthName == "July" ~ "Jul",
+  MonthName == "JUL" ~ "Jun",
+  MonthName == "Sept" ~ "Sep",
+  TRUE ~ MonthName
+)) %>%
+  group_by(MonthName) %>% summarise(N=n())
+#look ok? 
+
+#save data2 with these changes but be sure to remove the summarize! 
+data2 <- data2 %>% mutate(MonthName = case_when(
+  MonthName == "Agust" ~ "Aug",
+  MonthName == "Jnue" | MonthName == "June" ~ "Jun",
+  MonthName == "MAY" ~ "May",
+  MonthName == "July" ~ "Jul",
+  MonthName == "JUL" ~ "Jun",
+  MonthName == "Sept" ~ "Sep",
+  TRUE ~ MonthName
+))
+
+summary(data2)
+#MonthName was converted back to character with the mutate
+
+data2$MonthName <- factor(data2$MonthName)
+summary(data2)
+
+data2 <- data2 %>% mutate(MonthNum = case_when(
+  MonthName == "May" ~ 5, 
+  MonthName == "Jun" ~ 6,
+  MonthName == "Jul" ~ 7,
+  MonthName == "Aug" ~ 8,
+  MonthName == "Sep" ~ 9
+))
+
+summary(data2)
+
+#let's also make a proper Date variable so that we can put things in temporal order
+data2 <- data2 %>% mutate(
+    Date = as.Date(
+      paste(1973, MonthNum, Day, sep = "-"),   # "1973-5-1" etc.
+      format = "%Y-%m-%d"))
+
+
+
+```
+
+# Visualizing data with ggplot2 
+
+[Color Names](https://bookdown.org/hneth/ds4psy/D.3-apx-colors-basics.html)
+```{r, eval=FALSE}
+library(ggplot2)
+
+#create a histogram
+data2 %>% 
+  ggplot(aes(x=Ozone)) + 
+  geom_histogram(binwidth = 5, fill="skyblue", color="black") + 
+  theme_bw()
+
+#create a boxplot 
+data2 %>% 
+  ggplot(aes(x=MonthName, y = Solar.R)) + 
+  geom_boxplot(fill="gold", color="black")+ 
+  theme_bw()
+
+#create a scatterplot
+data2 %>%
+  ggplot(aes(x=Wind, y=Solar.R)) + geom_point() +
+  geom_smooth(method="lm") +
+  theme_bw()
+
+#create a line plot 
+data2 %>%
+  ggplot(aes(x=Date, y = Temp, color=Temp)) + geom_path() + 
+  scale_color_gradient(low = "blue", high = "red") +
+  theme_bw() +
+  labs(title= "Temperatures in Summer 1973", x = "Date", y = "Temperature", color = "°F")
+
+#create a barplot with summary data 
+data2 %>% 
+  group_by(MonthName) %>% 
+  summarise(meanTemp = mean(Temp, na.rm=TRUE), sdTemp = sd(Temp, na.rm=TRUE)) %>%
+  ggplot(aes(x=MonthName, y=meanTemp)) + 
+  geom_bar(stat="identity", fill="coral", color="black") +
+  geom_errorbar(aes(ymin = meanTemp - sdTemp, ymax=meanTemp + sdTemp)) + 
+  theme_bw()
+
+
+```
