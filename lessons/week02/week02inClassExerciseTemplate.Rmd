@@ -1,0 +1,91 @@
+---
+title: "Week 2 In-Class Coding: Exploring ChickWeight"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Introduction
+
+Today we'll practice some basic R data wrangling and visualization skills.  
+We'll be using the built-in dataset **ChickWeight**, which records the weight of chicks on different diets over time. *Remember to annotate your code.* 
+
+Hint: Don't forget about the library() function. 
+
+---
+
+## Step 1: Load the Data
+
+This dataset is already built into R. Let's take a look at it using data("ChickWeight") which will load the dataframe into your workspace. Convert this dataframe to a tibble and view the head of the dataframe. 
+
+```{r}
+
+
+```
+
+## Step 2: Summarize the Data
+
+Get a sense of the structure and descriptive statistics. Run at least two functions here to "explore" the dataset. 
+
+```{r}
+
+
+```
+
+## Step 3: Practice Database Commands
+
+From Week 1, we learned to select specific rows and columns using [,] or $.
+Try these examples:
+```{r}
+# Look at rows 3 through 6
+
+
+# Look at the weight column only
+
+
+```
+
+## Step 4: Create a New Variable
+
+Use mutate() to add a new column.
+For example, let's create a column that scales weight into lbs.
+1 gram = 0.00220462 lbs
+Save the dataframe with the new column as an new object in your environment. 
+```{r}
+
+
+
+```
+
+## Step 5: Filter the Data
+
+Suppose we only want chicks on Diet 1, use filter() to update your tibble (your dataframe) with only chicks on Diet 1. 
+```{r}
+
+
+
+```
+
+## Step 6: Make Some Plots
+
+Now let’s make two different plots using ggplot2. Let's use the first tibble (without the filtered data). You may create any type of plots that you want to visualize the data. 
+
+Hint: Consider using group = Chick within the aes() options if you want to your data to be grouped by individual chick in a plot. color=Chick also works if you don't want to use color for something else. Or you may just want to pool all chicks together to look at averages across diet types or time. 
+
+Hint: y should always be weight for these plots as it is the "dependent" variable on Time, Chick, and Diet (independent predictor variables).
+
+Note: Add some color or otherwise make the plots look pretty! 
+```{r}
+
+
+
+
+
+
+```
+
+## Step 7: Push to git! 
+Save the .Rmd and .html files to the folder with your repo name on your computer.
+Then sync your folder with your online repo. 
