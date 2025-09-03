@@ -1,0 +1,99 @@
+---
+title: "Week 2 Homework: mtcars"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+*Add your name above and replace the word "Template" with your name in the file name.*
+
+***Please feel free to come and do your homework in my office (either during office hours or email me to arrange a different time) and also remember you can work in groups!*** 
+
+## Sharing Your Private GitHub Repository with Your Instructor
+
+1. **Go to your repository on GitHub**  
+   - Log in at [github.com](https://github.com)  
+   - Click on the repository you created for this course.
+2. **Open the “Settings” tab**  
+   - It’s near the top of the repo page, to the right of “Insights.”
+
+![Settings button](https://github.nih.gov/advanced/owners/imgs/visibility.1.png){width=50%}
+
+3. **Find the “Collaborators” section**  
+   - In the left sidebar, click **“Collaborators and teams”** (under *Access*).  
+   - If asked, re-enter your GitHub password.
+4. **Add me as a collaborator**  
+   - Under **“Manage access”**, click the **“Add people”** button.  
+   - Enter my GitHub username:  
+     **`l-johnsonulrich`**  
+   - Click **“Add”**.
+5. **Confirm the invitation was sent**  
+   - You should see my username listed as “pending” until I accept
+
+---
+
+## Homework Instructions
+
+Complete the exercises below using R Studio.
+Type your code in the code chunks, then knit to HTML when you are finished.
+Remember, practice builds muscle memory!
+
+---
+
+## Step 1: Load the Data
+
+Load the data "mtcars" into your workspace. 
+Convert it to a tibble and give the tibble a new shorter/easier name.  
+
+```{r}
+
+
+```
+
+## Step 2: Summarize the Data
+
+Get a sense of the structure and descriptive statistics. Run at least two functions here to "explore" the dataset. 
+
+```{r}
+
+
+```
+
+## Step 3: Practice Database Commands
+
+From Week 1, we learned to select specific rows and columns using [,] or $.
+Try these examples:
+```{r}
+# Use square brackets to extract the 5th row and 3rd column.
+
+
+# Extract rows 10–15 and columns 1–2 using both $ and square brackets. 
+
+
+```
+
+## Step 4: Using mutate to "save" the rownames as a new column
+Use head() to view mtcars (original) and then print your tibble (if you type the name of your tibble it should automatically give you the top 10 rows without any additional functions. Notice that your tibble is missing the type of car to the left. In the original dataframe these were saved as "rownames" rather than part of the actual data. tibble() doesn't use rownames and so this data gets lost. 
+
+Use mutate and the function rownames() to create a new column with the car types in your tibble. Be sure this new column is "saved" in your tibble. 
+```{r}
+
+
+
+```
+
+## Step 5: Select only certain columns. 
+
+Use ?mtcars to get some information about this dataset. Choose four columns that you want to explore and create a **new** tibble with just those four columns. 
+Hint: Try ?dplyr::select for help here or use square brackets [,]. 
+```{r}
+
+
+
+```
+
+## Step 7: Push to git! 
+Save the .Rmd and .html files to the folder with your repo name on your computer.
+Then sync your folder with your online repo. 
