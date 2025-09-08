@@ -1,0 +1,101 @@
+---
+title: "Week3inClass"
+author: "Lily Johnson-Ulrich"
+date: "2025-09-05"
+output: html_document
+---
+
+## Step 1. Load your libraries and the the dataframe 'iris' as a tibble (with a new or the same name)
+```{r}
+
+```
+
+## Step 2: Data Types
+
+1. Look at the dataset with ?iris and and by typing your table name. 
+2. Identify which variables are qualitative nominal, ordinal, discrete quantitative, and continuous quantitative. Use a function to examine each variable and note in the code chunk using a # which variables are which. Convert any to the correct data type if they are labeled incorrectly. 
+
+```{r}
+#1. 
+
+
+#2. 
+
+
+
+```
+
+
+## Step 3: Visualizing Data
+
+### A. Continuous Variables
+Make a plot that shows the frequency of various scores of *one* of your continuous variables. 
+
+```{r}
+#Create your frequency plots here
+
+
+
+```
+
+Create a histogram and experiment with binwidth (using a different continuous variable than above).
+What happens if you make binwidth larger? Smaller? Show your code to demonstrate what happens! 
+```{r}
+#Plot your histograms here. 
+
+
+```
+
+### B. Relationship Between Two Continuous Variables
+
+Make a scatterplot with two continuous variables. 
+```{r}
+
+
+
+```
+
+### C. Categorical Variable
+
+Make a bar plot showing the number of flowers in each Species.
+Are the sample sizes balanced across species?
+```{r}
+
+
+
+```
+
+
+## Step 4: Summary Statistics: Describing your Data
+
+Compute summary statistics of Petal.Length for each species.
+```{r}
+#1. Create a density plot for Petal Length 
+
+
+#2. Calculate summary stats for Petal Length and use geom_vline() to add verticle lines for the mean, median, and mode 
+
+
+# How would you describe shape of this distribution in terms of a) symmetry, b) uniformity, and c) variation? 
+
+
+
+# What might be affecting b in particular? 
+# Hint: Create a grouped density plot by species 
+
+
+
+#which species has the longest petal.length on average? 
+
+```
+
+## Step 5: Plotting Summary Stats
+Make a bar chart of mean Sepal.Length by species with ±SE error bars. Hint: save a table with summary stats. 
+```{r}
+
+
+
+
+#why might we choose SE here instead of SD? 
+
+```

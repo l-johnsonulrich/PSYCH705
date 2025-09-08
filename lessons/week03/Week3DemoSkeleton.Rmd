@@ -1,0 +1,240 @@
+---
+title: "Week3DemoPlotsProbability"
+output: html_document
+date: "2025-09-03"
+editor_options: 
+  chunk_output_type: console
+---
+Pre-class: Grading homework in github: Check for "issues" or for comments inside the .Rmd File using "blame". 
+Pre class: Pulling from github
+Pre-class: Review slides
+
+```{r setup, message=FALSE}
+#loading libraries 
+library(tidyverse) 
+library(ggplot2)
+
+#loading the dataframe and convering it to a tibble 
+cars <- as_tibble(mtcars)
+cars
+
+#let's grab the car names
+
+#let's also add a manufacturer column 
+cars <- cars %>% mutate(make = sub(" .*", "", model))
+
+#a lot of these are special names not the manufacturer so let's rewrite it further to match
+cars %>% 
+
+#for the American brands we can use the overall manufacturer and we can clump the European and Japanese brands since there's not so many of them (or only 1 each)
+
+make == "Merc" ~ "Merc",
+make %in% c("Pontiac","Camaro","Cadillac") ~ "GM",
+make %in% c("AMC", "Hornet") ~ "AMC",
+make %in% c("Dodge","Valiant","Chrysler", "Duster") ~ "Chrysler",
+make %in% c("Ford", "Lincoln") ~ "Ford",
+make %in% c("Ferrari","Maserati","Porsche","Lotus","Volvo","Fiat","Opel","Peugeot","Renault")~"Europe",  make %in% c("Datsun","Mazda","Toyota","Honda") ~ "Japan"
+
+
+#how many cars in each category? 
+
+#let's add a categorical variable for "class"
+
+hp < 100 ~ "Economy",
+hp < 200 ~ "Standard",
+TRUE     ~ "HighPerformance"
+
+```
+
+
+## Types of Data
+
+**1. Qualitative**
+    1. Nominal data (no order or any kind of quantifiable value like hair color)
+        - factor: as.factor()
+        - binary (factor with only two levels, but often treated as numeric in R)
+    2. Ordinal (categories that can be ordered like grades (A, B, C, D, F))
+        - factor(ordered=TRUE)
+**2. Quantitative**
+    1. Discrete (integers or whole numbers like count data)
+        - as.integer() note: this will truncate decimals if you convert numeric to integer
+    2. Continuous (decimal numbers or fractions)
+        - as. numeric() 
+
+Let's make sure all of our variables are coded correctly and identify what type of data they are
+```{r}
+cars #let's identify what we have 
+?mtcars
+
+#change make to a factor 
+
+#change class to an ordered factor 
+
+#change cyl, gear, and carb to count (integer) 
+
+#change hp to integer (counts of discrete units of power)
+
+#change vs and am to factor for binary (though we may want it back to numeric for stats later on)
+
+
+```
+
+## Visualizing data with ggplot2 
+[Color Names](https://bookdown.org/hneth/ds4psy/D.3-apx-colors-basics.html)
+```{r}
+
+#Plotting continuous quantitative variables
+#mpg, disp, drat, wt, qsec <dbl>
+
+# Histogram of mpg 
+
+
+  labs(title="Histogram of MPG", x="MPG", y="Number of cars") + 
+  theme_bw()
+
+# Density plot of disp 
+
+  labs(title="Density of Car Weight", x="Weight (1000 lbs)", y="Density") + 
+  theme_bw()
+
+#density plots and histograms are good for looking at the frequency of different values of a continuous variable. Is the data symmetrical or skewed? Is it uniform or modal? What is the variance?  
+
+# Scatterplot: Weight vs Rear Axle Ratio (drat) 
+
+  
+  labs(title="MPG vs Weight", x="Weight (1000 lbs)", y="MPG") + 
+  theme_bw()
+
+#Plotting discrete quantitative variables
+#cyl, hp, gear, carb <int>
+
+# Bar plot showing the frequency of each cylinder count
+# This treats the integer 'cyl' more similar to a factor 
+
+  
+  labs(title="Count of Cylinders", x="Cylinders", y="Number of Cars")+
+  theme_bw()
+
+#Histogram of horsepower (even integers we can still plot similar to numeric 'dbl')
+
+  labs(title="Histogram of Horsepower", x="Gross Horsepower", y="Number of cars")+
+  theme_bw()
+
+#Boxplot of average horsepower by number of gears 
+
+  labs(title="Boxplot of Gears by Horsepower", x="Number of forward gears", y="Horsepower")+
+  theme_bw()
+
+#Scatterplot of carburetors by mpg (integer x dbl)
+
+  
+  labs(title="Scatterplot of carburetors by fuel efficiency", x="Number of carburetors", y = "Fuel Efficiency (mpg)")+
+  theme_bw()
+
+#Plotting binary variables (qualitative nominal)
+#vs and am
+
+# Barplot of transmission
+# geom bar by default uses count of instances 
+
+  
+  labs(title="Count by Transmission (0=Auto,1=Manual)", x="Transmission", y="Number of cars")+
+  theme_bw()
+
+# Boxplot of Engine Shape by Fuel Efficiency (MPG)
+# Add labels 
+ 
+  labs(title="MPG by Transmission", x="Transmission", y="MPG", fill="Engine")+
+  theme_bw()
+
+#Plotting categorical variables (quantiative ordinal/nominal)
+#make and class 
+
+# Barplot of car makes
+
+  labs(title="Number of Cars per Group", x="Make", y="Number of cars", fill="Make") +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) + 
+  theme_bw()
+
+# Boxplot of mpg by class 
+
+  labs(title="MPG by Performance", x="Performance Class", y="MPG", fill="Class") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+```
+
+## Plotting with summary statistics 
+
+When we describe a variable, we often start with **summary statistics**:
+
+- **n**: the sample size (how many observations we have).
+- **mean**: the average value (sum of all values divided by n).
+- **median**: the middle value if we order all values (less sensitive to outliers than the mean).
+- **sd (standard deviation)**: tells us how much the data vary around the mean.  
+   - A large SD means the data are more spread out.  
+   - A small SD means the data are tightly clustered near the mean.
+- **se (standard error of the mean)**: tells us how precisely we know the mean.  
+   - It is calculated as `sd / sqrt(n)`.  
+   - As n gets larger, the SE gets smaller (because more data = more precise estimate of the mean). 
+   - With a larger sample size, the mean of that group is more likely to be highly accurate *outside* the group we sampled. 
+
+**Key difference:**  
+- **SD** = variability in the data (spread of individual observations).  
+- **SE** = variability of the *sample mean* (how much the mean would change if we sampled again).  
+
+Later, we’ll use the SE to build **confidence intervals** and connect to **hypothesis testing**.
+
+```{r}
+
+#create summary stats per make
+# Compute summary stats by group
+summaryStats <- 
+  
+summaryStats
+
+#how does n relate to sd and se?
+ggplot(summaryStats, aes(x=n, y=sd_mpg)) + geom_point() + theme_bw()
+ggplot(summaryStats, aes(x=n, y=se_mpg)) + geom_point() + theme_bw()
+
+# Comparing across Makes
+# Mean ± SD error bars for make by mpg (use col instead of bar for bar plot)
+
+  labs(title="Mean MPG by Group ± SD", x="Vehicle Make", y="Miles per Gallon", fill="Make") +
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+
+# Mean ± SE error bars
+
+  
+  labs(title="Mean MPG by Group ± SE",x="Vehicle Make", y="Miles per Gallon", fill="Make") +
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+
+
+#Plotting raw data with summary stats on top using violin, points, and errorbars
+
+  
+  + theme_bw()
+#why prefer se here over sd? 
+
+# Summary stats for binary variables
+# What proportion of cars have v-shaped engines? 
+sumBin <- cars %>% group_by(make) %>% summarise(
+  N=n(),
+  count =sum(as.numeric(vs)-1),
+  prop = count/N,
+  sd = sd(as.numeric(vs)-1),
+  se = sd/sqrt(N))
+sumBin
+
+
+  labs(x = "Make", y = "Proportion of V-shaped Engines") +
+  theme_bw()
+
+#finding modes 
+#no function for this but we can use tidyverse functions 
+mtcars %>% group_by(as.factor(mpg)) %>% summarise(N=n()) %>% arrange(desc(N)) %>% filter(N==max(N))
+
+
+```
+
