@@ -1,6 +1,6 @@
 ---
 title: "Week 2 Homework: mtcars"
-author: "Your Name"
+author: "Lily Johnson-Ulrich"
 date: "`r Sys.Date()`"
 output: html_document
 editor_options: 
