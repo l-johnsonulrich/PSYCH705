@@ -5,6 +5,8 @@ date: "2025-09-03"
 editor_options: 
   chunk_output_type: console
 ---
+**LJU: Adding an edit for pulling**
+
 Pre-class: Grading homework in github: Check for "issues" or for comments inside the .Rmd File using "blame". 
 Pre class: Pulling from github
 Pre-class: Review slides
