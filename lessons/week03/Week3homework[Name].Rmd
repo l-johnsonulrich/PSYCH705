@@ -19,7 +19,7 @@ Load the libraries tidyverse, ggplot2, and palmerpenguins (you may be prompted t
 ## Step 2: Summarizing and visualizing the data
 Let's pretend we're interested in analyzing flipper length in penguins. What might our first step in our analysis pathway be? 
 
-**Directions**: Make 3 plots using different plotting functions to sequentially explore flipper length. Investigate at least 3 factors (categorical variables) that might affect flipper length. 
+**Directions**: Make 3 plots using different plotting functions to sequentially explore flipper length. Investigate at least 2 factors (categorical variables) that might affect flipper length. 
 
 **Note**: Show your code and your annotations. Explain what the code does and afterwards use an annotation to describe what you see and what you think might affect the shape (symmetry, uniformity, variation).  
 
