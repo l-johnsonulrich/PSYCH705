@@ -1,0 +1,52 @@
+---
+title: "Week3homework"
+author: "Your Name Here"
+date: "`r format(Sys.time(), '%B %d, %Y %H:%M')`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Step 1: Setup
+Load the libraries tidyverse, ggplot2, and palmerpenguins (you may be prompted to install palmerpenguins, but tidyverse and ggplot2 should already be installed). Then load the dataframe `penguins` as a tibble with your own shortname. Look at the datatypes and verify that they all look correct. 
+```{r echo=TRUE, results='hide', message=FALSE}
+
+
+
+
+```
+
+## Step 2: Summarizing and visualizing the data
+Let's pretend we're interested in analyzing flipper length in penguins. What might our first step in our analysis pathway be? 
+
+**Directions**: Make 3 plots using different plotting functions to sequentially explore flipper length. Investigate at least 3 factors (categorical variables) that might affect flipper length. 
+
+**Note**: Show your code and your annotations. Explain what the code does and afterwards use an annotation to describe what you see and what you think might affect the shape (symmetry, uniformity, variation).  
+
+**Hint**: Try using fill=column_name with a factor name. Check out the ggplot function + facet_grid(~column_name). If your plot is showing NA as a category try piping your tibble through drop_na(column_name). 
+
+```{r message=FALSE, warning=FALSE}
+
+
+```
+
+## Step 3: Two continuous variables
+Create a plot where both x and y are continuous variables to compare flipper length to another numeric or integer data. If flipper length is the variable that we're interested in (i.e. what affects flipper length?) then should it be x or y?
+```{r message=FALSE, warning=FALSE}
+
+
+```
+
+## Step 3: Adding summary stats and 
+Make a plot of flipper length that uses both the raw data and the mean with SD or SE. 
+```{r message=FALSE, warning=FALSE}
+
+
+```
+
+Save your work and remember to use:
+
+1. git pull (download from github.com)
+2. git add filename.Rmd (add your file)
+3. git commit -m "message" (commit the changes)
+4. git push (upload to github.com)
