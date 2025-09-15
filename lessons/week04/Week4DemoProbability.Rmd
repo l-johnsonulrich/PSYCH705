@@ -259,9 +259,7 @@ meanDist50+meanDist500
 
 # WHY DO WE CARE ABOUT THIS? 
 
-# In statistics, we are almost always working with means when we are describing our data. And we can fairly safely assume that our mean comes from a normal distribution of theoretical sample means. We can ask.. what is the probability that OUR MEAN comes from a distribution of means centered around 0? (0 is often the mean of our null hypothesis...)
-
-#work through example of sample mean distribution where true mean is zero! 
+# In statistics, we are almost always working with means when we are describing our data. And we can fairly safely assume that our mean comes from a normal distribution of theoretical sample means. We can ask.. what is the probability that OUR MEAN comes from a distribution of means centered around 0? (0 is often the mean of our null hypothesis...) 
 
 
 ```
