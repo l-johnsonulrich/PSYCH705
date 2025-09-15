@@ -1,0 +1,123 @@
+---
+title: "Week 4 Homework: Probability and Confidence Intervals"
+author: "Your Name Here"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Instructions
+
+* Fill in the questions marked **YOUR ANSWER HERE**.
+* You should not need to write new code — only run what’s given and occasionally tweak a parameter when prompted.
+* This assignment is meant to reinforce class concepts in new contexts.
+
+---
+
+## Q1. Coin Flips and Probability
+
+```{r}
+library(tidyverse)
+set.seed(321)
+
+# Simulate coin flips: 1 = Heads, 0 = Tails
+n_flips <- 10   # you can change this
+p_heads <- 0.7  # unfair coin
+
+#flip the coin n times and make a plot of the results
+#rerun lines 30 and 31 a few times
+flips <- rbinom(n_flips, 1, p_heads)
+ggplot(tibble(flips), aes(x = flips)) +
+  geom_bar(aes(y = after_stat(prop)), fill = "skyblue", color = "black", width=1)
+
+
+```
+
+**Question:** 
+a. Based on the plots, what range of probabilities did you get for tails (a score of 0)? Why do we get different numbers each time? 
+b. Do these values match the "true" probability? Why or why not? 
+c. What kind of results would you expect if the coin was fair? 
+
+
+
+
+YOUR ANSWER HERE
+
+---
+
+## Q2. Larger Samples and the Law of Large Numbers
+
+```{r}
+# Flip the coin 10,000 times
+n_flips <- 10000
+flips_big <- rbinom(n_flips, 1, p_heads)
+
+prop.table(table(flips_big)) #just show the numbers instead of a ggplot
+```
+
+**Question:** Compare the proportions here to the smaller sample above. What pattern do you notice as the sample size increases?
+
+YOUR ANSWER HERE
+
+---
+
+## Q3. Sampling Means from a Normal Distribution
+
+```{r}
+set.seed(456)
+
+#take a sample size of 20 from a true population with mean 50 and sd 10 and plot a histogram showing the 20 scores with a vertical line for the sample mean
+sample <- tibble(sample=rnorm(20, mean = 50, sd = 10)) 
+sample %>%
+  ggplot(aes(x = sample)) +
+  geom_histogram(bins = 30, fill = "orange", color = "white") +
+  geom_vline(xintercept = mean(sample$sample))
+
+#repeat the above step 2000x and plot a histogram showing the variation in sample means with a horizontal line for **mean of sample means**
+sample_means <- replicate(2000, mean(rnorm(20, mean = 50, sd = 10)))
+tibble(sample_means) %>%
+  ggplot(aes(x = sample_means)) +
+  geom_histogram(bins = 30, fill = "orange", color = "white") +
+  geom_vline(xintercept = mean(sample_means))
+```
+
+**Question:** The population has mean = 50. What was the mean of your first sample? What is the approximate mean of the sampling distribution? How close are they each to the true mean? Which is closer? Why? 
+
+YOUR ANSWER HERE
+
+---
+
+## Q4. Confidence Intervals in Context
+
+Imagine we collected data on **daily water consumption (liters)** for 25 elephants and found:
+
+* Sample mean = 105
+* Sample standard deviation = 20
+
+Note: We do not know the population mean as this would mean measuring daily water consumption for all elephants that exist. However, we are interested in generalizing our data to make an estimate about how much water any given elephant may drink on any given day.
+```{r}
+n <- 25 #number of elephants
+mean_elephants <- 105 #mean consumption per elephant 
+sd_elephants <- 20 #sd for water consumption per elephant 
+se_elephants <- sd_elephants / sqrt(n) #calculate standard error of the mean 
+
+ci_lower <- mean_elephants - 1.96 * se_elephants
+ci_upper <- mean_elephants + 1.96 * se_elephants
+c(ci_lower, ci_upper)
+```
+
+**Question:** Write a correct interpretation of this confidence interval.
+
+YOUR ANSWER HERE
+
+---
+
+# Wrap-up
+
+1. Knit your file to .html
+2. Put both files in your git repo folder 
+3. Use 'git pull' to download any changes from github.com
+4. Use 'git add filename' to add them to git tracking
+5. Use 'git commit -m "comment"' to commit them for upload
+6. Use 'git push' to upload your changes from github.com 

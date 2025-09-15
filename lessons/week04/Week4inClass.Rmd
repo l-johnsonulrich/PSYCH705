@@ -1,0 +1,201 @@
+---
+title: "Week 4 In-Class Activity: Probability, Sampling, and Confidence Intervals"
+author: "Your Name Here"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Instructions
+* Run the code as you go. 
+* Fill in your answers where you see **`YOUR ANSWER HERE`**.
+* You may be asked to change small pieces of code (like `n = 10` → `n = 100`) and re-knit to see what happens.
+
+---
+
+## Part 1. Dice Rolling & Basic Probability
+
+```{r}
+library(tidyverse)
+set.seed(123)
+
+# Roll one die many times
+rolls <- sample(1:6, size = 1000, replace = TRUE)
+
+tibble(rolls) %>%
+  ggplot(aes(x = rolls)) +
+  geom_histogram(binwidth = 1, fill = "steelblue", color = "white") +
+  labs(title = "Histogram of 1,000 die rolls", x = "Value", y = "Count")
+```
+
+**Q1:** Is each outcome equally likely? How does the shape of the histogram reflect probability?
+
+YOUR ANSWER HERE
+
+---
+
+## Part 2. Rolling Multiple Dice
+
+```{r}
+# Sum of 10 dice, rolled 10,000 times
+dice_sum <- replicate(10000, sum(sample(1:6, size=10, replace = TRUE)))
+
+tibble(sum = dice_sum) %>%
+  ggplot(aes(x = sum)) +
+  geom_histogram(binwidth = 1, fill = "tomato", color = "white") +
+  labs(title = "Sum of 10 dice (10,000 trials)", x = "Total", y = "Count")
+```
+
+**Q2:** The distribution now looks different. Why does rolling more dice produce a bell shape instead of a flat one?
+
+YOUR ANSWER HERE
+
+**Q3:** What happens if you change the sample size from `10` to `2` in the code above? Try it. No need to copy and paste, just edit directly.
+
+YOUR ANSWER HERE
+
+---
+
+## Part 3. Sampling & the Central Limit Theorem
+
+```{r}
+set.seed(42)
+
+# Population: skewed distribution
+population <- rexp(100000, rate = 0.2)
+
+#look at the population distribution 
+tibble(population) %>%
+  ggplot(aes(x = population)) +
+  geom_histogram(bins = 30, fill = "lightgreen", color = "white") +
+  labs(title = "Sampling distribution of means (n = 30)", x = "Sample mean", y = "Count")
+
+# Draw many sample means
+sample_means <- replicate(5000, mean(sample(population, size=30, replace = TRUE)))
+
+#look at the distribution of sample means 
+tibble(sample_means) %>%
+  ggplot(aes(x = sample_means)) +
+  geom_histogram(bins = 30, fill = "darkgreen", color = "white") +
+  labs(title = "Sampling distribution of means (n = 30)", x = "Sample mean", y = "Count")
+```
+
+**Q4:** The population is skewed, but the sampling distribution is almost symmetric. Why?
+
+YOUR ANSWER HERE
+
+**Q5:** What happens if you change `size = 30` to `size = 5`?
+
+YOUR ANSWER HERE
+
+---
+
+## Part 4. Standard Errors
+
+```{r}
+set.seed(101)
+
+n <- 35
+sample_data <- rnorm(n, mean = -22.58, sd = 43.59)
+
+sample_mean <- mean(sample_data)
+sample_sd <- sd(sample_data)
+sample_se <- sample_sd / sqrt(n)
+
+sample_mean; sample_sd; sample_se
+```
+
+**Q6:** What does the `SE` tell us compared to the `SD`? Why does SE get smaller with larger `n`?
+
+YOUR ANSWER HERE
+
+---
+
+## Part 5. Z-scores & Probability
+
+```{r}
+# z-score of observed mean relative to null mean = 0
+z <- (sample_mean - 0) / sample_se
+p_value <- 2 * (1 - pnorm(abs(z)))
+
+z; p_value
+```
+
+**Q7:** What does the p-value represent in words?
+
+YOUR ANSWER HERE
+
+---
+
+## Part 6. Confidence Intervals
+
+```{r}
+# 95% CI
+ci_lower <- sample_mean - 1.96 * sample_se
+ci_upper <- sample_mean + 1.96 * sample_se
+c(ci_lower, ci_upper)
+```
+
+**Q8:** Interpret this confidence interval correctly in your own words.
+
+YOUR ANSWER HERE
+
+**Q9:** If we collected many more samples and built CIs each time, what proportion of them would contain the true mean?
+
+YOUR ANSWER HERE
+
+---
+
+## Part 7. Visualizing Many Confidence Intervals
+
+```{r}
+set.seed(456)
+
+true_mean <- -22.58
+sd_sample <- 43.59
+n <- 35
+se <- sd_sample / sqrt(n)
+
+n_samples <- 50
+sample_means <- rnorm(n_samples, mean = true_mean, sd = se)
+ci_lower <- sample_means - 1.96 * se
+ci_upper <- sample_means + 1.96 * se
+
+ci_df <- tibble(
+  sampleID = 1:n_samples,
+  mean = sample_means,
+  lower = ci_lower,
+  upper = ci_upper,
+  contains_true = (ci_lower <= true_mean) & (ci_upper >= true_mean)
+)
+
+ggplot(ci_df, aes(y = sampleID)) +
+  geom_errorbarh(aes(xmin = lower, xmax = upper, color = contains_true), height = 0.3) +
+  geom_point(aes(x = mean), size = 2) +
+  geom_vline(xintercept = true_mean, linetype = "dashed") +
+  scale_color_manual(values = c("red","blue")) +
+  labs(title="95% Confidence Intervals from 50 Repeated Samples",
+       subtitle="Blue intervals contain the true mean, red intervals do not",
+       x="Mean reduction", y="Sample", color="Contains True Mean?") +
+  theme_minimal()
+```
+
+**Q10:** Count the red intervals. Does it make sense in terms of 95% coverage?
+
+YOUR ANSWER HERE
+
+**Q11:** Why is it incorrect to say “there is a 95% chance the true mean is in this interval”?
+
+YOUR ANSWER HERE
+
+---
+
+# Wrap-up
+
+1. Knit your file to .html
+2. Put both files in your git repo folder 
+3. Use 'git pull' to download any changes from github.com
+4. Use 'git add filename' to add them to git tracking
+5. Use 'git commit -m "comment"' to commit them for upload
+6. Use 'git push' to upload your changes from github.com 

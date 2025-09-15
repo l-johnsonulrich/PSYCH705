@@ -1,0 +1,442 @@
+---
+title: "Probability"
+output: html_document
+date: "2025-09-11"
+editor_options: 
+  chunk_output_type: console
+---
+# Week 4: Beyond Descriptives – Probability, Sampling, and Inference
+
+This week, we move from **descriptive statistics** (summarizing our dataset) to **probabilistic reasoning** (making generalizations beyond our dataset).  
+
+# 1. Probability Basics: Discrete Outcomes
+
+Probability is defined as the **long-run proportion** of times an event occurs.  
+Let’s start with the simplest examples: rolling dice.
+
+When we make frequency distributions (histograms/density plots) that show the frequency or count of events, we can calculate the probability as the "area under the curve" if the y-axis is converted to a proportion or a percent (the default in geom_density()).
+
+*Note: You do not need to understand how to code these plots yourself or calculate these probabilities. You do need to understand what the plots are showing and how to interpret them!*
+
+## 1a. Rolling a six-sided die
+```{r}
+library(tidyverse)
+
+set.seed(123) #most computers can't generate *true* randomness but use complicated formulas to get strings of numbers close enough to random. set.seed() just means we're all using the same random string so that we will all get the same results. 
+
+#use the "sample" function to roll dice 10,000 times. Randomly ampling from a list of 1-6, 10k times. 
+dice6 <- sample(1:6, size = 10000, replace = TRUE)
+#take a look at dice 6 in your environment, it should be a HUGE list of type integer
+head(dice6)
+
+#convert dice6 to a tibble and use ggplot to look at a histogram of dice rolls
+tibble(roll = dice6) %>%
+  ggplot(aes(x = roll)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black") +
+  labs(title = "10,000 Rolls of a Fair Six-Sided Die", x = "Die face", y = "Count")
+
+#We expect each outcome (1–6) about 1/6 ≈ 16.7% of the time.
+#let's replot this by proportion
+tibble(roll = dice6) %>% group_by(roll) %>% summarise(N=n(), prob=N/10000, per=prob*100) %>% ggplot(aes(x=roll, y=per)) + geom_col(fill="skyblue", color="black", width=1)
+#now we can also use this plot to make estimates about probability... what is the probability that it we roll the dice again that we get a 4? 16.5%! 
+#for dice we already know that it should be 1/6, but many times we're measuring things where we don't know before hand
+
+#what about the probability of 4 or 5? 
+#we can add up multiple columns! another way to think about it is the "area" is equal to the probability. 
+
+tibble(roll = dice6) %>% group_by(roll) %>% summarise(N=n(), prob=N/10000, per=prob*100) %>% mutate(color=c("skyblue", "skyblue", "skyblue","pink", "pink", "skyblue")) %>%
+  ggplot(aes(x=roll, y=per, fill=color)) + geom_col(color="black", width=1) +
+  scale_fill_identity()
+
+#2X16.5%=37%
+
+```
+
+## 1b. Summing dice.. what is the probability?  
+```{r}
+set.seed(123) #reset the seed 
+
+# Roll 10 dice, 10000 times, and take the sum
+dice_sum <- replicate(10000, sum(sample(1:6, 10, replace = TRUE)))
+
+tibble(sum = dice_sum) %>%
+  ggplot(aes(x = sum)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of the Sum of 10 Dice", x = "Sum", y = "Count")
+
+#this actually ended up normally distributed! 
+#let's plot this as percentage... 
+
+dice_sum_counts <- tibble(sum = dice_sum) %>% group_by(sum) %>% summarise(N=n(), percent=N/10000*100)
+
+dice_sum_counts %>% ggplot(aes(x=sum, y=percent)) + geom_col(fill="skyblue", color="black", width=1)
+
+#calculate the area (easy to do when it's chunked into columns)
+#area = adding the value for each column together 
+
+dice_sum_counts %>% mutate(color=if_else(sum %in% c(41,42,43),0,1)) %>%
+  ggplot(aes(x=sum, y=percent, fill=as.factor(color))) + geom_col(color="black", width=1) 
+
+dice_sum_counts %>% filter(sum %in% c(41,42,43)) %>% ungroup() %>% summarise(sum(percent))
+#we have a 9.35% of getting a sum of 10 dice rolls equal to 41, 42, or 43
+#9.35% also equals the "area under the curve" that is red (or the area of all three columns)
+
+sum(dice_sum_counts$percent)
+#the total probability is 100% 
+#the total area under the curve is 100% 
+
+```
+
+
+## 1c. Unknown distribution (continuous example)
+Let’s simulate from the exponential distribution (skewed). Unlike dice, we don’t know the probabilities of exact values; instead we talk about ranges (intervals). This makes the “area under the curve” idea really clear.
+```{r}
+set.seed(123) #reset the seed 
+
+# Generate 10,000 samples from an exponential distribution
+callInterval <- rexp(10000, rate = 0.5) 
+head(callInterval)
+#this could be time until the next meerkat sentinel call for example, with an average rate of 0.5 calls per minute (or an average of 1 call every 2 minutes).
+
+#Let's see what shape this takes: 
+#use y=after_stat(density) to create a histogram with the y-axis as proportion instead of count 
+# Histogram + density estimate
+tibble(x = callInterval) %>%
+  ggplot(aes(x = x)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 50, fill = "skyblue", color = "black") +
+  geom_density(color = "red", size = 1) +
+  labs(title = "10,000 draws from an Exponential Distribution", 
+       x = "Value", y = "Density")
+
+#What is the probability that the next call comes in less than 1 minute?
+
+# compute density for plotting manually (normally geom_density does this automatically)
+dens <- density(callInterval, from = 0, to = max(callInterval), n = 2048)
+dens <- data.frame(x = dens$x, y = dens$y)
+head(dens)
+dens_shade <- subset(dens, x <= 1)
+
+# plotting 
+ggplot(dens, aes(x = x, y = y)) +
+  geom_line(size = 1, color = "black") + # full density curve
+  geom_ribbon(aes(x=x, ymin=0, ymax=y), fill="gray") +
+  geom_ribbon(data = dens_shade, aes(x = x, ymin = 0, ymax = y),
+              fill = "pink") +  # exact shaded area under curve
+  geom_vline(xintercept = 1) +
+  theme_bw()
+
+# calculate the area of the pink shaded section 
+pexp(1, rate = 0.5) #for a theoretical exponential distribution 
+mean(callInterval <= 1) #very rough approximation for our distribution itself (technically would need calculus for true approximation, but this is closer than pexep for our data because our data is just a *sample* from the exponential which introducing variability). 
+# 38.9% 
+
+# what is the probability that the next meerkat call comes between 5 and 10 minutes after the last one? 
+dens_shade <- subset(dens, x <= 10 & x >= 5)
+ggplot(dens, aes(x = x, y = y)) +
+  geom_line(size = 1, color = "black") + # full density curve
+  geom_ribbon(aes(x=x, ymin=0, ymax=y), fill="gray") +
+  geom_ribbon(data = dens_shade, aes(x = x, ymin = 0, ymax = y),
+              fill = "pink") +  # exact shaded area under curve
+  geom_vline(xintercept = c(5,10)) +
+  theme_bw()
+
+pexp(10, rate = 0.5) - pexp(5, rate=0.5) #theoretical
+mean(callInterval >= 5 & callInterval <= 10) #empirical approximation
+#7.53% 
+
+```
+
+# 2. Samples vs Populations
+
+**Population:** the complete set of all possible observations or outcomes that we’re interested in. I.e. the full population of living wild asian elephants or wild spotted hyenas. 
+
+**Sample:** a subset of the population. E.g., we can measure the behavior of 20 elephants or hyenas. Or, we can take a sample of 10,000 dice rolls or 10,000 inter-call intervals (from the exponential distribution).  
+
+We can use samples to make educated guesses "estimates" about what the population is really like. Smaller samples tend to be more variable and larger samples tend to be more representative. If you sample more than once, the samples will probably vary (just as if you sampled 20 elephants in your 2024 summer field season, then sampled another different 20 elephants in your 2025 summer field season!). This is called **sampling variability**. 
+
+## 2a. Sampling Variability and the Law of Large Numbers
+The Law of Large Numbers (LLN) is a fundamental principle in probability. It says that as the number of observations in a sample increases, the sample average (or proportion) will get closer and closer to the true population average (or probability).
+```{r}
+set.seed(789)
+pop <- rnorm(100000, mean = 50, sd = 10) #generate an imaginary population of 100,000 antelope with a mean height of 50cm and a standard deviation of 10cm that is normally distributed
+
+#let's measure a few (50) antelope and see what heights we get. Let's repeat the sample 1000x (you would never take 1000 samples in reality, maybe you would take another sample the next year, but here imagine there are 1000 parallel universes where you take 1 sample of 50 antelope heights) 
+samples <- data.frame(replicate(1000, sample(pop,50))) #table where each column is a new sample
+
+#look at the variation in the samples 
+#this mimics the real word process, where the samples generally represent the population but there's variation
+hist(samples$X1)
+hist(samples$X2)
+hist(samples$X3)
+hist(samples$X4)
+
+mean(samples$X1)
+mean(samples$X2)
+mean(samples$X3)
+mean(samples$X4)
+
+
+#make IDs it's own column and make the heights all in one column (long format)
+samples <- samples %>% pivot_longer(cols = everything(), names_to = "sampleID", values_to = "heights")
+
+#lets visualize the variability! 
+samples %>% filter(sampleID %in% paste0("X", 1:20)) %>% ggplot(aes(x=heights, fill=sampleID)) + geom_density(alpha=.2) + theme(legend.position="none")
+
+#The Law of Large Numbers (LLN) is a fundamental principle in probability. It says that as the number of observations in a sample increases, the sample average (or proportion) will get closer and closer to the true population average (or probability).
+samples10 <- data.frame(replicate(1000, sample(pop,10)))
+samples10 <- samples10 %>% pivot_longer(cols = everything(), names_to = "sampleID", values_to = "heights")
+samples10 %>% filter(sampleID %in% paste0("X", 1:20)) %>% ggplot(aes(x=heights, fill=sampleID)) + geom_density(alpha=.2)+ theme(legend.position="none")
+#even smoother 
+
+samples1k <- data.frame(replicate(1000, sample(pop,1000)))
+samples1k <- samples1k %>% pivot_longer(cols = everything(), names_to = "sampleID", values_to = "heights")
+samples1k %>% filter(sampleID %in% paste0("X", 1:20)) %>% ggplot(aes(x=heights, fill=sampleID)) + geom_density(alpha=.2)+ theme(legend.position="none")
+#way LESS variability and much closer to the true population! 
+
+samples10k <- data.frame(replicate(1000, sample(pop,10000)))
+samples10k <- samples10k %>% pivot_longer(cols = everything(), names_to = "sampleID", values_to = "heights")
+samples10k %>% filter(sampleID %in% paste0("X", 1:20)) %>% ggplot(aes(x=heights, fill=sampleID)) + geom_density(alpha=.2)+ theme(legend.position="none")
+#even smoother 
+```
+
+## 2b. Central Limit Theorem  
+The Central Limit Theorem is one of the most important concepts in statistics. It states that, no matter the shape of the population distribution, the distribution of the sample mean will become approximately normal (bell-shaped) as the sample size gets large.
+```{r}
+#let's look at the distribution of MEAN heights 
+#now we're not plotting raw heights, we're plotting the sample means (we took 1000 samples so we have 1000 means) *each sample measured 50 antelope heights
+sampleMeans <- samples %>% group_by(sampleID) %>% summarise(meanHeight = mean(heights))
+sampleMeans
+ggplot(sampleMeans, aes(x=meanHeight)) + geom_histogram(fill="skyblue", color="black") + geom_vline(xintercept = mean(pop), col="red", lwd=1)
+#this geom_vline is the "mean of means" or the "mean mean"
+#even though we had a lot of variability in each sample with different histograms and different means, the "Distribution of Sample Means" has a mean that is very close to the TRUE population mean 
+
+#one thing that is cool is that this distribution of means is almost always normal, regardless of the shape of the distribution of heights (or whatever it is that you're measuring)
+#let's go back to meerkat inter-call intervals... 
+
+sampleDist <- tibble(x = callInterval) %>%
+  ggplot(aes(x = x)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "black") +
+  geom_vline(xintercept = mean(callInterval), col="red") +
+  labs(x="Intercall Intervals (n=10,000 calls)")
+sampleDist
+#most sentinel calls occur within 5 minutes of each other, but some calls are spaced out much longer
+
+#let's measure meerkat call intervals in 1,000 parallel universes where each time we have 1000 recordings of sentinel calls and the time between them
+
+mean(rexp(10000, rate = 0.5)) #run this a few times, we get a different value each time but generally close to 2 minutes (the population average)
+
+#replicate this experiment in 10,000 parallel universes 
+meanCallSamples <- replicate(1000, mean(rexp(10000, rate = 0.5)))
+
+meanDist <- tibble(x = meanCallSamples) %>%
+  ggplot(aes(x = x)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "black")+
+  geom_vline(xintercept = mean(meanCallSamples), col="red")+
+  labs(x="Mean Intercall Intervals (n=1000 means)")
+meanDist
+
+library(patchwork)
+sampleDist + meanDist
+
+#the distribution of sample means gets wider with small sample sizes and narrower the larger the sample size... 
+meanDist50 <- tibble(x = replicate(1000, mean(rexp(50, rate = 0.5)))) %>%
+  ggplot(aes(x = x)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "black")+
+  geom_vline(xintercept = mean(meanCallSamples), col="red")+
+  labs(x="Mean Intercall Intervals (sample size = 50)")+
+  xlim(1,3)
+meanDist50
+meanDist500 <- tibble(x = replicate(1000, mean(rexp(500, rate = 0.5)))) %>%
+  ggplot(aes(x = x)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "black")+
+  geom_vline(xintercept = mean(meanCallSamples), col="red")+
+  labs(x="Mean Intercall Intervals (sample size = 500)")+
+  xlim(1,3)
+meanDist500
+meanDist50+meanDist500
+
+
+
+# WHY DO WE CARE ABOUT THIS? 
+
+# In statistics, we are almost always working with means when we are describing our data. And we can fairly safely assume that our mean comes from a normal distribution of theoretical sample means. We can ask.. what is the probability that OUR MEAN comes from a distribution of means centered around 0? (0 is often the mean of our null hypothesis...)
+
+#work through example of sample mean distribution where true mean is zero! 
+
+
+```
+
+## 2c. Calculating the probability that our sample mean is different! 
+
+Does our predator stimulus affect the distance meerkats travel away from the sleeping burrow? Let's put a bat-eared fox dummy about 50 meters from the sleeping burrow- do meerkats travel less and forage closer to the sleeping burrow for safety? We're not sure if meerkats see foxes as threats (they definitely see jackals and eagles as threats!)
+```{r}
+set.seed(124)
+library(rmutil)  # for Laplace distribution
+
+sample <- rmutil::rlaplace(35, m = -20, s = 40)  
+mean(sample)
+sd(sample)
+# let's say we observe that on average meerkats stayed 22.58 meters closer to the sleeping burrow on days with the fox dummy compared to days without the fox dummy with a standard deviation of 43.59 when we sampled 25 groups on consecutive days
+sample <- tibble(travel=sample)
+ggplot(sample, aes(x=travel)) + geom_histogram(binwidth=19, fill="skyblue", color="black") + geom_vline(xintercept = mean(sample$travel), col="red")
+
+#Was this decrease just random chance?! 
+
+#If our predator dummmy had no effect in reality and this was just random chance then the population mean should be 0. 
+#As a rule of thumb if your sample size is greater than 30, you can typically assume the population sd is the same as your sd 
+population <- rmutil::rlaplace(100000, m=0, s= 43.59)
+
+#let's create a distribution of sample means from the population 
+populationMeans <- replicate(10000, mean(sample(population,35)))
+populationMeans <- tibble(means=populationMeans)
+ggplot(populationMeans, aes(x=means)) + geom_histogram(bins=50, fill="skyblue", color="black") + geom_vline(xintercept = 0, col="red")
+#if we take samples of size 35 meerkat groups... 1000x this is what the distribution of means would look like 
+
+
+#how does OUR real sample mean compare to the distribution of sample means under our null hypothesis? 
+populationMeans <- replicate(100000, mean(sample(population,35)))
+populationMeans <- tibble(means=populationMeans)
+ggplot(populationMeans, aes(x=means)) + geom_histogram(bins=50, fill="skyblue", color="black") + geom_vline(xintercept = 0, col="red") + geom_vline(xintercept = mean(sample$travel), col="blue")
+
+#what is the probability of getting our mean?
+#what is the probability of getting a mean as low (or lower) than ours? 
+#shaded area to the left 
+#plotting: 
+dens <- density(populationMeans$means, from = min(populationMeans$means), 
+                to = max(populationMeans$means), n = 2048)
+dens <- data.frame(x = dens$x, y = dens$y)
+dens_shade <- dens %>% filter(x <= mean(sample$travel))
+
+areaCurvePlot <- ggplot(dens, aes(x = x, y = y)) +
+  geom_line() + 
+  geom_ribbon(aes(x = x, ymin = 0, ymax = y), fill = "lightgray") + 
+  geom_ribbon(data = dens_shade, aes(x = x, ymin = 0, ymax = y), fill = "pink") +     
+  geom_vline(xintercept = mean(sample$travel), color = "red") +
+  labs(x="distribution of means")+
+  theme_bw()
+areaCurvePlot
+
+#calculate the area under the cover with an approximation
+mean(populationMeans <= mean(sample$travel))
+
+#there is roughly a 1.48% chance of getting our mean for meerkats if the dummy fox truly had zero effect. 
+
+##### THIS IS ESSENTIALLY WHAT A P-VALUE IS ############
+
+#### BUT MORE IMPORTANTLY... IS THIS DATA BIOLOGICALLY MEANINGFUL?? ##### 
+rawdata <- ggplot(sample, aes(x=travel)) + geom_histogram(binwidth=19, fill="skyblue", color="black") + geom_vline(xintercept = mean(sample$travel), col="red") + theme_bw()
+rawdata + areaCurvePlot
+
+```
+
+## 2d. In reality, we don't have access to the population distribution or the distribution of sample means... 
+In this case, we use the normal curve as a comparison. The normal curve is centered around 0 with a standard deviation of 1. (Switch to ppt slides).
+```{r}
+#To compare out sample mean to the normal curve we need to convert it to z-scores to match the x-axis of the normal curve. 
+
+# This is our observed sample:
+mean_sample <- -22.58
+sd_sample <- 43.59
+n <- 35
+
+# Standard error of the mean
+se <- sd_sample / sqrt(n)
+
+# Compare our sample mean to the null hypothesis (mean = 0)
+z <- (mean_sample - 0) / se
+z
+# z tells us how many SEs our sample mean is below the null mean
+# here we use SE instead of SD because we're comparing means (and SE is the SD of the distribution of means)
+
+# Probability of observing this mean or less (one-sided)
+p_one_side <- pnorm(z)
+p_one_side
+
+# Two-sided p-value
+#probability of observing a mean this extreme on either end < -22 OR > 22 
+p_two_side <- 2 * p_one_side
+p_two_side
+
+# ---- Visualization ----
+# Normal curve representing sampling distribution under null
+x <- seq(-100, 50, length.out = 1000) #create an x-axis 
+y <- dnorm(x, mean=0, sd=se) #create y-values for normal curve 
+
+# Shade area below sample mean
+shade <- x <= mean_sample
+
+tibble(x=x, y=y, shade=shade) %>%
+  ggplot(aes(x=x, y=y)) +
+  geom_line(size=1) +
+  geom_ribbon(aes(ymax=y, ymin=0, fill=shade)) +
+  geom_vline(xintercept = mean_sample, color="red", size=1) +
+  scale_fill_manual(values = c("TRUE"="pink","FALSE"="gray")) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+
+## 3. Confidence Intervals
+How does our mean compare to the true mean (if we can rule out 0 as the true mean)?
+*powerpoint slides 
+```{r}
+# ---- Confidence interval (approximate 95%) ----
+
+#95% of data under the normal curve are between -1.96 and +1.96 
+pnorm(1.96) - pnorm(-1.96) #draw it in ppt
+
+#calculate it by taking our se and multiplying it by 1.96 to figure out what our range is for 1.96 SEs below and 1.96 SEs above our mean: 
+ci_lower <- mean_sample - 1.96 * se
+ci_upper <- mean_sample + 1.96 * se
+ci_lower
+ci_upper
+
+#Our 95% confidence interval was from -37.02 meters to -8.14 meters, so it is likely that the true mean is inside this range. 
+
+# *** if we have a 95% confidence level, we can be confident that 95% of the time (19 out of 20 times we take samples), our interval estimate will accurately captures the true population mean being estimated.
+# ***not 95% probability the true mean is in the range, just that 95% of the time the true mean will be in this range 
+
+
+
+
+## take multiple CIs with multiple samples simulation
+set.seed(456)
+
+# Suppose the true mean travel reduction is -20, SD = 43.59
+true_mean <- -20
+sd_sample <- 43.59
+n <- 35
+se <- sd_sample / sqrt(n)
+
+# Simulate 50 repeated samples of size n
+n_samples <- 50
+sample_means <- rnorm(n_samples, mean = true_mean, sd = sd_sample/sqrt(n)) # each sample's mean
+ci_lower <- sample_means - 1.96 * se
+ci_upper <- sample_means + 1.96 * se
+
+# Put in a tibble
+ci_df <- tibble(
+  sampleID = 1:n_samples,
+  mean = sample_means,
+  lower = ci_lower,
+  upper = ci_upper,
+  contains_true = (ci_lower <= true_mean) & (ci_upper >= true_mean)
+)
+
+# Plot
+ggplot(ci_df, aes(y = sampleID)) +
+  geom_errorbarh(aes(xmin = lower, xmax = upper, color = contains_true), height = 0.3) +
+  geom_point(aes(x = mean), size = 2) +
+  geom_vline(xintercept = true_mean, linetype = "dashed") +
+  scale_color_manual(values = c("red","blue")) +
+  labs(title="95% Confidence Intervals from 50 Repeated Samples",
+       subtitle="Blue intervals contain the true mean, red intervals do not",
+       x="Mean travel distance reduction (m)", y="Sample ID", color="Contains True Mean?") +
+  theme_minimal()
+
+
+```
+
+
+
+
