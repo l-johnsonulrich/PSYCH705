@@ -1,0 +1,142 @@
+---
+title: "Week6hw"
+output: html_document
+author: "Your Name Here"
+date: "`r Sys.Date()`"
+---
+
+Load Libraries
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(effectsize)
+library(pwr)
+library(emmeans)
+```
+
+## Problem 1: One-sample t-test
+
+Dataset: mtcars
+Question: Is the average miles per gallon (mpg) different from 20?
+
+Response Variable: mpg (continuous)
+Predictor: None (one group)
+```{r}
+#load data
+
+
+# Visualize data & Check normality
+
+
+# One-sample t-test
+
+
+# Effect size
+
+
+# Non-parametric alternative
+
+
+# Plot Results
+
+
+
+
+```
+
+## Problem 2: Two-sample t-test
+
+Dataset: iris
+Question: Do setosa and versicolor differ in Sepal.Length?
+
+Response Variable: Sepal.Length
+Predictor: Species (categorical, 2 levels)
+
+```{r}
+#load data
+
+
+#filter to include just two species 
+
+# Plot a histogram & Check normality
+
+
+# Two-sample t-test
+
+
+# Effect size
+
+
+# Non-parametric alternative
+
+
+# Plot Results
+
+
+
+```
+
+## Problem 3: Chi-square test
+
+Dataset: HairEyeColor
+Question: Is hair color independent of eye color?
+
+Response Variable: Eye color
+Predictor Variable: Hair color
+
+```{r}
+#load the dataset 
+
+
+#create a contingency table with counts for each hair/eye color combination
+#you'll need to combine the counts across sex in order to just use hair and eye color (group_by and summarise)
+#you might want to use pivot_wider to get the levels of eye color as rows and levels of hair color as columns (or vice versa) and column_to_rownames() to make it a proper contingency table
+
+
+
+# Chi-square test
+
+
+# Observed and expected counts
+
+
+# Plot
+
+
+
+```
+
+## Problem 4: One-way ANOVA & correlation
+
+Dataset: mtcars
+Question 4a (ANOVA): Does the number of cylinders (cyl) predict horsepower (hp)?
+Question 4b (Correlation): Is wt correlated with mpg?
+```{r}
+#mtcars is already loaded 
+
+#Look at the data and check assumptions 
+
+
+# ANOVA
+
+
+# Post-hoc (where are the differences?)
+
+
+# Plot
+
+
+
+# Check correlation assumptions 
+
+
+# Correlation
+
+
+# Spearman if assumptions violated
+
+# Plot
+
+
+```
+

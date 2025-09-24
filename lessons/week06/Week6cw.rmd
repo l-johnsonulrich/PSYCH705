@@ -1,0 +1,139 @@
+---
+title: "Week6CW"
+output: html_document
+author: "Your Name Here"
+date: "`r Sys.Date()`"
+---
+## Instructions
+
+In this assignment, you will explore the hyenas dataset. For each problem, write your own question, identify your response and predictor variables, select an appropriate statistical test, and run your analysis. Use the code chunks provided.
+
+Load Libraries and Dataset
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(effectsize)
+library(pwr)
+library(emmeans)
+
+# Load hyena data
+hyenas <- as_tibble(read.csv("hyenas.csv"))
+
+# Convert variables to correct types
+hyenas$id <- factor(hyenas$id)
+hyenas$sex <- factor(hyenas$sex)
+hyenas$mom <- factor(hyenas$mom)
+hyenas$clan <- factor(hyenas$clan)
+
+hyenas$birthdate <- as.Date(hyenas$birthdate, format="%Y-%m-%d")
+hyenas$dengrad <- as.Date(hyenas$dengrad, format="%Y-%m-%d")
+hyenas$weaned <- as.Date(hyenas$weaned, format="%Y-%m-%d")
+hyenas$disappeared <- as.Date(hyenas$disappeared, format="%Y-%m-%d")
+hyenas$dispersal <- as.Date(hyenas$dispersal, format="%Y-%m-%d")
+hyenas$mating <- as.Date(hyenas$mating, format="%Y-%m-%d")
+
+glimpse(hyenas)
+
+```
+
+## Problem 1: T-test
+
+**Step 1:**  Write your question here
+Example: Is the average age at weaning different for this population of cubs?
+
+
+**Step 2:** Identify variables
+
+Response variable (DV, continuous/categorical):
+
+Predictor variable (IV, categorical/continuous):
+
+Type of test you think is appropriate:
+
+**Step 3:** Code chunk
+
+Don't forget to check assumptions in your code. 
+```{r}
+
+
+```
+
+
+## Problem 2: Chi-Square
+
+**Step 1:**  Write your question here
+Example: Is the average age at weaning different for this population of cubs?
+
+
+**Step 2:** Identify variables
+
+Response variable (DV, continuous/categorical):
+
+Predictor variable (IV, categorical/continuous):
+
+Type of test you think is appropriate:
+
+**Step 3:** Code chunk
+
+Don't forget to check assumptions in your code. 
+```{r}
+
+
+```
+
+
+## Problem 3: ANOVA
+
+**Step 1:**  Write your question here
+Example: Is the average age at weaning different for this population of cubs?
+
+
+**Step 2:** Identify variables
+
+Response variable (DV, continuous/categorical):
+
+Predictor variable (IV, categorical/continuous):
+
+Type of test you think is appropriate:
+
+**Step 3:** Code chunk
+
+Don't forget to check assumptions in your code. 
+```{r}
+
+
+```
+
+
+## Problem 4: Correlation
+
+**Step 1:**  Write your question here
+Example: Is the average age at weaning different for this population of cubs?
+
+
+**Step 2:** Identify variables
+
+Response variable (DV, continuous/categorical):
+
+Predictor variable (IV, categorical/continuous):
+
+Type of test you think is appropriate:
+
+**Step 3:** Code chunk
+
+Don't forget to check assumptions in your code. 
+```{r}
+
+
+```
+
+---
+
+# Wrap-up
+
+1. Knit your file to .html
+2. Put both files in your git repo folder 
+3. Use 'git pull' to download any changes from github.com
+4. Use 'git add filename' to add them to git tracking
+5. Use 'git commit -m "comment"' to commit them for upload
+6. Use 'git push' to upload your changes from github.com 
