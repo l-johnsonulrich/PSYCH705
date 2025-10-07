@@ -1,0 +1,209 @@
+---
+title: "Regression Practice Template"
+output: html_document
+date: "`r Sys.Date()`"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+# Load packages
+library(tidyverse)
+library(glmmTMB)
+library(ggplot2)
+library(DHARMa)
+library(readxl)
+library(emmeans)
+library(pwr)
+
+# Set working directory if needed
+#setwd("YOUR_PATH_HERE")
+
+# Load dataset
+
+df <- read_excel("rspb20171765supp2.xlsx")
+df <- as_tibble(df)
+
+# Take a look at the first rows
+df
+glimpse(df)
+
+#correct assignment
+df$`Sleeping group size` <- as.numeric(df$`Sleeping group size`)
+df$`Foraging Group size: mean` <- as.numeric(df$`Foraging Group size: mean`)
+df$`Group size combined` <- as.numeric(df$`Group size combined`)
+df$`Day range (m)` <- as.numeric(df$`Day range (m)`)
+df$`HR size average` <- as.numeric(df$`HR size average`)
+
+```
+
+Dataset Overview: (Knit to view)
+
+| Column Name           | Description                                     | Type                 |
+| --------------------- | ----------------------------------------------- | -------------------- |
+| `Species Name`        | Original species name                           | Factor / character   |
+| `Subfamily`           | Taxonomic subfamily                             | Factor / categorical |
+| `Family`              | Taxonomic family                                | Factor / categorical |
+| `Terrestriality`      | Terrestrial (1) or arboreal (0)                 | Factor / categorical |
+| `logECV`              | Log-transformed brain size (endocranial volume) | Continuous numeric   |
+| `logBodyMass`         | Log-transformed body mass                       | Continuous numeric   |
+| `logInsects`          | Log-transformed proportion of diet from insects | Continuous numeric   |
+| `logFruit`            | Log-transformed proportion of diet from fruit   | Continuous numeric   |
+| `logLeaves`           | Log-transformed proportion of diet from leaves  | Continuous numeric   |
+| `logCombiGroupSize`   | Log-transformed social group size               | Continuous numeric   |
+| `logHRS`              | Log-transformed home range size                 | Continuous numeric   |
+| `Diurnality`          | Diurnal (1) or nocturnal/other (0)              | Factor / categorical |
+| `ECV`                 | Raw brain size (endocranial volume)             | Continuous numeric   |
+| `Body mass`           | Raw body mass (grams)                           | Continuous numeric   |
+| `%animal prey`        | Percent of diet that is animal prey             | Continuous numeric   |
+| `%fruit`              | Percent of diet that is fruit                   | Continuous numeric   |
+| `%leaves`             | Percent of diet that is leaves                  | Continuous numeric   |
+| `Sleeping group size` | Observed mean sleeping group size               | Continuous nume      |
+
+
+## Problem 1: Continuous response vs Continuous predictor
+
+**Response Variable:**
+
+**Predictor variable:** 
+
+**Question:**
+
+**State hypotheses:**
+Null hypothesis (H0): 
+Alternative hypothesis (H1):
+
+```{r}
+# Filter/prepare data if needed
+df1 <- df %>% drop_na(logECV, logBodyMass)
+
+# View your data 
+
+# Check linearity assumption
+
+# Fit regression
+# model1 <- glmmTMB(...)
+
+# View model summary
+# summary(model1)
+
+
+
+# Check assumptions
+# simulateResiduals(model1, plot = TRUE)
+
+# Plot result with regression line
+
+# Interpret your results (including Estimate (slope), p-value, and plot).
+
+
+```
+
+## Problem 2: Continuous response that may benefit from log-transformation
+
+Example: Many of the group size or home range size variables could benefit. 
+
+**Response Variable:**
+
+**Predictor variable:** 
+
+**Question:**
+
+**State hypotheses:**
+Null hypothesis (H0): 
+Alternative hypothesis (H1):
+```{r}
+# Filter/prepare data if needed
+df1 <- df %>% drop_na(logECV, logBodyMass)
+
+# View & transform your response variable
+
+
+# View your data 
+
+# Check linearity assumption
+
+# Fit regression
+# model1 <- glmmTMB(...)
+
+# View model summary
+# summary(model1)
+
+
+
+# Check assumptions
+# simulateResiduals(model1, plot = TRUE)
+
+# Plot result with regression line
+
+
+# Interpret your results (including Estimate (slope), p-value, and plot).
+
+```
+
+## Problem 3: Continuous response vs Categorical predictor
+
+**Response Variable:**
+
+**Predictor variable:** 
+
+**Question:**
+
+**State hypotheses:**
+Null hypothesis (H0): 
+Alternative hypothesis (H1):
+```{r}
+# Filter/prepare data if needed
+df1 <- df %>% drop_na(logECV, logBodyMass)
+
+
+# View your data 
+
+# Check linearity assumption
+
+# Fit regression
+# model1 <- glmmTMB(...)
+
+# View model summary
+# summary(model1)
+
+
+
+# Check assumptions
+# simulateResiduals(model1, plot = TRUE)
+
+
+#do post-hoc test
+
+# Plot result with regression line
+
+# Interpret your results (including Estimate (slope), p-value, and plot).
+
+```
+
+## Problem 4: Power Analysis
+
+Think of a future question you might want to ask related to this dataset. Calculate an effect size and use it to run a power analysis to see how many species you would need to sample. 
+
+```{r}
+
+
+
+```
+
+---
+
+# Wrap-up
+
+1. Knit your file to .html
+2. Put both files in your git repo folder 
+3. Use 'git pull' to download any changes from github.com
+4. Use 'git add filename' to add them to git tracking
+5. Use 'git commit -m "comment"' to commit them for upload
+6. Use 'git push' to upload your changes from github.com 
+
+
+---
+
+## Week 7 Homework: 
+Create a new .Rmd file and do steps 1-4 on your own using a different dataset. You can use hyenas, or any of the base R datasets we've used previously. No template is provided but you can copy and paste this in-class structure. Make sure to clearly define variables, hypotheses, check assumptions, and **interpret** results in at least 1 sentence. 

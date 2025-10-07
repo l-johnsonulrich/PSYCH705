@@ -1,0 +1,453 @@
+---
+title: "Week 7 Simple Linear Regression"
+output: html_document
+date: "2025-09-30"
+editor_options: 
+  chunk_output_type: console
+---
+
+Set up workspace: 
+```{r, eval=FALSE}
+library(pwr)
+library(effectsize) 
+library(tidyverse)
+library(ggplot2)
+library(glmmTMB) # for regression
+library(DHARMa) #for checking model fit
+library(emmeans) # for post-hoc effects
+library(lubridate) # for dates
+
+setwd("PSY705/lessons/week7") #set your working directory 
+
+load("Hyenas.RData") #load the hyenas tibble already cleaned/formatted 
+
+```
+
+## 1. A priori power analysis for correlations
+
+From our long-term database we found a significant negative correlation between standardized rank and age at first parturition of -0.34. 
+
+We want to do a study where we look at rank's effect on age at first parturition with hyenas in Botswana which live in much smaller clans at lower density due to the harsher living conditions. Does rank still have such a big effect? How many hyenas do we need to sample if there's a smaller effect to still find a significant relationship? 
+
+```{r, eval=FALSE}
+# 🚨 POLL: If we reduce our expected effect size from r = -0.34 to r = -0.20,
+# do we need:
+#   a) More hyenas 
+#   b) Fewer hyenas 
+#   c) The same number
+
+# anticipated correlation (small effect size)
+effectSize <-    
+
+# A priori power analysis: how many Botswana female hyenas do we need to detect r = 0.34?
+
+
+
+
+#How many hyenas do we need to sample? 
+
+
+```
+
+
+## 2. A priori power analysis for t-test
+
+Next, from our long-term database we found a non-significant effect of sex
+If there IS a true difference, what sample size would we need to detect it in a second field season? 
+
+```{r, eval=FALSE}
+
+
+# A priori power analysis: how many hyenas do we need to detect a significant difference?
+
+
+
+```
+
+These results suggest: 651 hyenas **PER GROUP**, so over 1000 total 
+If there isn't a true difference we are unlikely to detect it even with 1000 hyenas. 
+
+Note: Power analyses should be done **a priori!** (before the fact)
+If your p-value is significant a post-hoc power test will always say you had sufficient power and if you p-value is not significant a post-hoc power test will always say you didn't have enough power (if you use your measured effect size). 
+
+With a large enough sample size even tiny differences become significant, this is why effect size is just as important as p-values. And with small sample sizes even large effects may be non-significant. 
+```{r}
+set.seed(121)
+
+#Let's say mice exposed to red light weight 0.01 grams more than mice kept in darkness with a standard deviation of 1 gram. Adult mice typically weight 25-30 grams. 
+
+# Tiny effect size
+x <- 0.01
+sd <- 1
+
+# Try different sample sizes
+sample_sizes <- c(10, 100, 1000, 10000, 100000)
+
+#what is our p-value if we randomly sample different size n's from the population? 
+for (n in sample_sizes) {
+  x <- rnorm(n, mean = x, sd = sd)
+  t_result <- t.test(x, mu = 0)
+  cat("N =", n, " | t =", round(t_result$statistic, 3),
+      " | p =", signif(t_result$p.value, 3), "\n")
+}
+
+pwr.t.test(d = x/sd,
+           sig.level = 0.05,   # alpha
+           power = 0.80,       # desired power
+           type = "one.sample",
+           alternative = "two.sided")
+#recomended is ~78,500 so this explains why we got a significant p-value with 100,000 samples. 
+#but an effect size of .01 is so close to zero that this might not be biologically meaningful (and I would doubt it is truly different from zero).
+
+#Statistical vs biological significance
+
+# 🚨 THINK-PAIR-SHARE: Why do tiny effects become statistically significant
+# with huge N, but may not be biologically meaningful? Can you think of an example? 
+
+
+```
+
+
+
+## 3. Correlation vs Regression
+```{r}
+
+# Example data: heights (inches) and weights (pounds)
+# Does height (x) predict weight (y)? 
+height <- c(60, 62, 65, 67, 70, 72, 75)
+weight <- c(115, 120, 140, 150, 175, 185, 210)
+
+# 1. Correlation
+
+
+
+# correlation tells us about the strength of the relationship between variables (no line fitted)
+
+# 2. Equation for a simple straight line (y=mx+b or Y = b0 + b1*X)
+# regression tells us about the "line of best fit" 
+
+# Calculate slope (b1) and intercept (b0) manually
+#sample size
+#mean x 
+#mean y
+
+# Slope: b1 = sum((x - x̄)*(y - ȳ)) / sum((x - x̄)^2)
+b1 <- sum((height - mean_x) * (weight - mean_y)) / sum((height - mean_x)^2)
+b1
+
+#this formula is basically centering the data around zero, taking the product of these deviations from the means (and if tall people tend to weigh more then these products will usually be positive), add up all the products for "total covariation", then standardize it by how much x varies to get a per-unit (x) rate of change
+# b1 = how much Y changes with X / how much X changes 
+# b1 = rise (y) / run (x)
+
+
+# 🚨 THINK-PAIR-SHARE: We found slope = 6.45. How do you interpret this in words? (Type your answer in the demo).
+
+
+# Intercept: b0 = ȳ - b1*x̄
+b0 <- mean_y - b1 * mean_x
+b0  # intercept
+# calculating the intercept is easy, we just use the formula for a line at mean(x,y) which ensures that the line of best fit passes through (mean x, mean y) which should position the line of best fit nicely among our points 
+# remember we used deviation from the means to calculate our slope, and if we plug in mean x into our equation, we want to be able to calculate mean y
+# b0 is going to anchor our line so that it passes through (mean x, mean y)
+
+# 🚨 POLL: What does the intercept mean here?
+#   a) Predicted weight for someone of average height
+#   b) Predicted weight when height = 0
+#   c) The average of X and Y
+
+# Step 2: Predicted values based on line of best fit 
+# Just use the formula for a line again 
+
+
+
+
+
+# Step 3: Residuals (what formula do we need here?)
+
+
+
+#now we have all our regression estimates
+#yi = b0 + b1*xi + ei 
+
+weight #yi= weight
+b0 #point estimate (no sub i) for intercept
+b1 #point estimate for slope
+height #x=height
+residuals #residual error (1 for each value of xi)
+predicted # y-hat where y-hat = b0 + b1*xi
+
+#raw data plus predicted as a line 
+  #plot raw data (x,y)
+  #plot the predicted data (x,y-hat)
+  #plot the regression line (connect predicted points) 
+
+#plot the residuals
+for(i in 1:length(height)){ #add residuals 
+  segments(x0 = height[i], y0 = weight[i], 
+           x1 = height[i], y1 = predicted[i], 
+           col = "blue")
+}
+
+#how much error is there in the model? how much variation is NOT explained by a simple straight line 
+
+# Checking assumptions
+# 1. Homogeneity of variance: residuals all have roughly the same variance across all fitted (predicted) values of y (error is roughly equal across X values)
+
+  # look for roughly horizontal band of points
+
+
+# 2. Independence of Observations: no observation linked to others, all from different subjects for example 
+
+# 3. Normality: Residuals themselves should be normally distributed (around 0)
+# Lots of small errors on either side of the regression line and some larger errors should create a normal distribution 
+
+
+
+# Step 4: Compare with lm()
+
+
+
+
+
+#view the intercept
+
+
+
+
+
+
+# Step 5: Centering predictor variables  
+
+#center the data around the mean (mean for X becomes 0)
+
+# Centering
+
+
+# Note: We typically only center predictors because we want the response variable to remain easily interpretable 
+
+# Fit regression with centered height
+
+
+#same slope for X
+#different intercept (now the intercept is the weight at average height)
+
+plot(height_c, weight, main="Height vs Weight",
+     xlab="Height (inches above or below the mean height of 67.29 inches)", ylab="Weight (pounds)", pch=19)
+abline(model_c, col="blue", lwd=2)
+abline(h=model_c$coefficients[1], col="red") #
+abline(v=0, col="red")
+#plot is virtually identical we've just shifted the scale for height
+
+summary(model_c)
+#p-values for intercept and slope 
+
+#residual standard error: this is essentially the average size of the residuals, i.e., how far observed weights are from the predicted weights, in original units (pounds). Smaller is better. 
+
+#R-squared: Here: 98.93% of the variation in weight is explained by height. Always between 0 and 1 — closer to 1 = strong linear relationship. 
+#multiple: Proportion of the total variance in the response variable (Y) explained by the predictors.
+#adjusted: Same as multiple but adjusted for multiple predictor (X) variables. With only 1 predictor it should be nearly identical to multiple. 
+
+#F-stat: 460.5 = ratio of variance explained by model / variance left unexplained.
+# F > 1 → the model explains more variance than is left over; the larger it is, the stronger the evidence that the predictor matters.
+# F < 1 → the model explains less variance than the residual noise; the predictor is essentially worse than guessing the mean.
+
+#p-value for model is basically the same as p-value for height because we have only one predictor, once we get into multiple regression this p-value is basically the combined/global effect of the whole model at fitting the data. E.g., do all predictors together explain variance in Y? 
+
+
+
+```
+
+
+
+## 3. Rank and Lifespan
+
+Do high ranking hyenas live longer? 
+H0: There is no effect of rank on lifespan. 
+H1: There is an effect of rank on lifespan. 
+Response variable: Lifespan
+Predictor: Rank 
+```{r}
+
+#create a filtered dataset for this analysis
+hyenasLife <- hyenas %>% drop_na(stan_rank, lifespan) %>% filter(sex=="f")
+#remove the missing values and also include only females, since males often disappear/disperse and we don't know what their true lifespan is 
+
+#LOOK AT THE DATA
+  # x does not need to be normal
+   #y does not need to be normal 
+
+#HOWEVER, if y is very skewed or bounded, a linear regression may give weird residuals and poor model fit 
+
+# Check assumptions 
+# 1. Linear relationship 
+
+
+
+# 2. Independence of observations (yes, each from a unique hyena)
+# BUT, some hyenas are closely related which DOES mean they're not truly independent... but our sample is fairly large and includes many hyenas from different clans that are all unrelated, so all the high ranking hyenas are NOT related so any bias should be limited 
+
+# 3. Fit the model 
+
+
+
+# 🚨 RECAP: What does the estimate and p-value for the intercept mean? 
+# 🚨 RECAP: What does the estimate and p-value for rank mean? 
+
+
+#check residuals
+
+
+#check homogeneity of variance
+
+
+#fitted = the predicted y values
+#residuals = error associated with each value 
+
+# 🚨 POLL: Look at this residuals vs fitted plot. Which assumption is being tested?
+#   a) Linearity
+#   b) Homoscedasticity (equal variance)
+#   c) Normality of residuals
+#   d) Independence
+
+
+#also check with dharma (review dharma slides)
+
+#these residuals aren't great... let's take a look at what all this red actually means... 
+
+#for this data set, I would investigate transforming lifespan or using a different model beyond simple linear regression
+```
+
+## 4. Log-transformation of the response variable: Rank and log(Lifespan)
+```{r}
+   #roughly normal on log transformation 
+
+#A log-transformation spreads out values near 0 but compresses values far away.
+values <- c(.5, 1,2,3,4,5)
+log(values)
+
+values2 <- c(1,10,20,30,40,100,1000,10000)
+log(values2)
+
+plot(values2)
+plot(log(values2))
+
+#checking assumptions: linear relationship 
+
+
+#running model 
+
+
+# If you log-transform Y: coefficients are interpreted in terms of percent changes, not raw units.
+
+# The coefficient (0.298) is on the log scale. Exponentiating gives exp(0.298) ≈ 1.35.
+# This means: for each 1-unit increase in rank, lifespan is multiplied by ~1.35 (a 35% increase).
+exp(0.298)
+
+# Since rank goes from -1 to 1, that’s a 2-unit spread. Going from the lowest (-1) to the highest (1) rank would multiply lifespan by exp(0.298 × 2) ≈ exp(0.596) ≈ 1.82 → an 82% longer lifespan.
+exp(0.298*2)
+
+#check residuals with dharma
+
+
+#looks beautiful! 
+#note the outliers show up in both the residuals and our scatter plot. 
+```
+
+## 5. Does age at den graduation predict age at weaning? 
+Most cubs graduate from the den first, but keep nursing from mom. Does leaving earlier correspond to weaning earlier? 
+```{r}
+#look at the data
+
+
+#create a filtered dataset for analysis 
+
+
+#look at data gain 
+
+
+
+#fit the model
+
+
+
+#normality of residuals
+
+
+#residuals vs fitted
+
+
+#with dharma
+
+#looks great! Just a few red outliers
+
+
+
+
+```
+
+
+## 4. t-test... ANOVA... It’s linear regression all the way down!
+We can use all three to compare age at graduation to sex and they are mathematically identical, just with different estimates extracted.  
+*If you square the value of t from a t-test, you get the F-value*.
+*lm output gives us the F-statistic which is identical to the F-value*
+
+```{r}
+t.test(ageGrad ~ sex, data=hyenas) #t-test
+ 
+summary(aov(ageGrad ~ sex, data=hyenas)) #anova
+
+1.3588^2 #if you square the value of t from a t-test you get the F-value
+
+summary(lm(ageGrad~sex, data=hyenas)) #simple linear regression 
+
+#the math is basically identical, just different output for different ways of asking a question
+
+
+```
+
+
+
+## 5. Regression with a categorical predictor 
+Does lifespan differ among clans? 
+```{r}
+#look at the data 
+
+
+
+#make talek the first (reference) variable as it's in a different management than the other three 
+hyenas$clan <- relevel(hyenas$clan, ref="talek")
+
+#create the model 
+
+
+#with dharma
+
+
+#same as with ANOVA we need a post-hoc test to see where differences are
+#we know all three clans are different from talek, but are any of them different from each other? 
+
+library(emmeans)
+  #pairwise comparisons
+  #descriptive stats per clan
+
+
+#is this driven by more hyenas living longer or less hyenas dying young? juvenile vs adult survival?! 
+#let's create a second model 
+
+#filter our dataset to only include adults
+
+#look at the data again
+
+
+#create the model 
+
+
+#post hoc tests
+  #descriptive stats per clan
+   #pairwise comparisons
+
+#with dharma
+
+
+
+```
