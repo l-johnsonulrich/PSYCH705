@@ -1,0 +1,422 @@
+---
+title: "Week6DemoHypothesisTesting"
+output:
+  pdf_document: default
+  html_document: default
+date: "2025-09-22"
+editor_options:
+  chunk_output_type: console
+---
+
+Load libraries and dataset 
+```{r, eval=FALSE}
+# Load packages
+library(tidyverse)
+library(ggplot2)
+library(effectsize)   # for Cohen's d, eta^2, etc.
+library(pwr)          # for power analysis
+library(emmeans)      # for post-hoc effects
+
+# Import the dataset 
+hyenas <- as_tibble(read.csv("hyenas.csv"))
+hyenas #view head 
+
+# Peek at the data
+glimpse(hyenas)
+
+# Example variables in dataset:
+# dob (date of birth)
+# sex (Male/Female)
+# age (in days or years)
+# denGraduationAge
+# weaningAge
+# firstParturitionAge
+# socialRank
+# dispersalAge
+# immigrationAge
+
+#change characters to factor 
+hyenas$id <- factor(hyenas$id)
+hyenas$sex <- factor(hyenas$sex)
+hyenas$mom <- factor(hyenas$mom)
+hyenas$clan <- factor(hyenas$clan)
+
+#change dates to dates 
+hyenas$birthdate <- as.Date(hyenas$birthdate, format="%Y-%m-%d")
+hyenas$dengrad <- as.Date(hyenas$dengrad, format="%Y-%m-%d")
+hyenas$weaned <- as.Date(hyenas$weaned, format="%Y-%m-%d")
+hyenas$disappeared <- as.Date(hyenas$disappeared, format="%Y-%m-%d")
+hyenas$dispersal <- as.Date(hyenas$dispersal, format="%Y-%m-%d")
+hyenas$mating <- as.Date(hyenas$mating, format="%Y-%m-%d")
+
+```
+
+## 1. One-sample t-test
+
+Question: Is average age-at-weaning different from 12 months?
+
+Response Variable: Age at weaning (months) (continuous)
+
+Predictor: None/Categorical (only 1 group: hyena cubs)
+
+```{r, eval=FALSE}
+#mutate an age at weaning variable in decimal months
+hyenas <- hyenas %>%
+  mutate(ageWeaning = as.numeric(difftime(weaned, birthdate, units = "days")) / 30.4)
+
+#LOOK AT THE RESPONSE VARIABLE FIRST
+hist(hyenas$ageWeaning)
+#is it approximately normal? 
+
+#what is our sample size? 
+sum(!is.na(hyenas$ageWeaning))
+
+#more formal check of normality: 
+qqnorm(hyenas$ageWeaning); qqline(hyenas$ageWeaning) #plotting deviation from normality 
+shapiro.test(hyenas$ageWeaning)  # formal test (sensitive if n is large), W=1 for normal
+
+
+# T-test
+t.test(x=hyenas$ageWeaning, mu = 12, alternative="two.sided")
+#super significant
+
+
+# Effect size (Cohen's d for one-sample)
+cohens_d(hyenas$ageWeaning, mu = 12)
+
+# Non-parametric: Wilcoxon signed-rank
+wilcox.test(hyenas$ageWeaning, mu = 12)
+
+#plot the result
+ggplot(hyenas, aes(x = "", y = ageWeaning)) +
+  geom_violin(fill = "lightblue") +
+  geom_boxplot(width = 0.1, outlier.color = "gray40", fill = "white") +
+  geom_hline(yintercept = 12, color = "red", linetype = "dashed", linewidth = 1) +
+  labs(title = "Weaning Age vs. Hypothesized Mean",
+       x = "", y = "Weaning Age (months)") +
+  theme_minimal()
+
+```
+
+## 2. Two-sample t-test
+
+Question: Do males and females differ in age at den graduation?
+
+Response: Age at den graduation (months) (continuous)
+
+Predictor: Sex (categorical)
+
+```{r, eval=FALSE}
+#create a new variable for age at den graduation in months
+hyenas <- hyenas %>%
+  mutate(ageGrad = as.numeric(difftime(dengrad, birthdate, units = "days")) / 30.4)
+
+#PLOT THE DATA
+hist(hyenas$ageGrad)
+#negative values?! 
+
+out <- hyenas %>% filter(ageGrad < 0)
+#probably just convert to NAs... if we filter we lose a lot of data 
+hyenas <- hyenas %>% mutate(ageGrad = if_else(ageGrad > 0, ageGrad, NA))
+
+hist(hyenas$ageGrad)
+
+qqnorm(hyenas$ageGrad); qqline(hyenas$ageGrad) #plotting deviation from normality 
+shapiro.test(hyenas$ageGrad)  # formal test (sensitive if n is large), W=1 for normal
+
+
+
+#formula notation (y=ageGrad, x=sex)
+t.test(ageGrad ~ sex, data = hyenas)
+
+levels(as.factor(hyenas$sex))
+#convert "u" to NA
+hyenas <- hyenas %>% mutate(sex=case_when(sex=="f" ~ "f", sex=="m" ~ "m", sex=="u" ~ NA))
+
+#try the test again 
+t.test(ageGrad ~ sex, data = hyenas)
+#females graduate later than males but this difference is not significant 
+
+# Effect size
+cohens_d(ageGrad ~ sex, data = hyenas)
+
+# Non-parametric: Mann–Whitney U
+wilcox.test(ageGrad ~ sex, data = hyenas)
+
+#Plot the result: 
+ggplot(hyenas %>% filter(!is.na(sex)), aes(x = ageGrad, fill=sex)) +
+  geom_density(alpha=.5) +
+  labs(title = "Den Graduation by Sex",
+       x = "Age at Den Graduation", y = "Density") +
+  theme_minimal()
+
+#wilcoxen might be even more accurate here because female is likely skewed higher by a few outliers 
+
+
+
+```
+
+
+## 3. Chi-square test of independence
+
+Question(s):
+
+Does litter size affect survival to sexual maturity?
+
+Response variable (DV): surviveToMaturity (Yes/No)
+
+Predictor variable (IV): number_littermates (0/1)
+
+```{r, eval=FALSE}
+
+#mutate a disappear age because there might be missing data and if they disappear at 5 years without having a dispersal or mating date this would be odd
+hyenas <- hyenas %>% 
+  mutate(
+    ageDeath = as.numeric(difftime(disappeared, birthdate, units = "days")) / 30.4, 
+    ageSM = case_when(
+      sex=="f" ~ as.numeric(difftime(mating, birthdate, units = "days"))/ 30.4,
+      sex=="m" ~ as.numeric(difftime(dispersal, birthdate, units="days"))/ 30.4))
+
+#mutate a variable for survival to SM
+hyenas <- hyenas %>% mutate(surviveSM = case_when(
+  !is.na(ageSM) ~ "yes",
+  ageDeath < 12*4 ~ "no",
+  TRUE ~ NA
+))
+
+#how many NAs? 
+sum(is.na(hyenas$surviveSM)) #pretty small compared to 1138 obs 
+#small enough not to look into why these hyenas were NAs
+sum(is.na(hyenas$number_littermates))
+
+#quick look at our data
+hyenas %>% filter(!is.na(surviveSM), !is.na(number_littermates)) %>% 
+  group_by(nLit = as.factor(number_littermates), surviveSM) %>%
+  summarise(n=n()) %>% ungroup() %>%
+  ggplot(aes(x=nLit, y=n, fill=surviveSM)) +
+  geom_col(position=position_dodge())
+
+
+# Contingency table
+hyenasCT <- table(as.factor(hyenas$number_littermates), hyenas$surviveSM)
+#table function cross tabulates counts of each combination 
+print(hyenasCT)
+
+
+# Chi-squared test
+
+#data must be COUNTS
+#each datapoint must be independent
+#expected cell counts must be >5 (otherwise non-parametric)
+
+chiTest <- chisq.test(hyenasCT)
+chiTest
+
+#warning is because the cases for 2 littermates is very rare. 
+
+hyenasCT2 <- hyenasCT[rownames(hyenasCT) != "2",]
+hyenasCT2
+
+chiTest <- chisq.test(hyenasCT2)
+chiTest
+
+chiTest$observed
+chiTest$expected #expected =  (row X column totals) / grand total
+#are the observed different from expected? 
+
+
+```
+
+## 4. One-way ANOVA
+
+Question: Does social rank (high, mid, low) predict age at first parturition?
+
+Response variable: age at first parturition (continuous)
+Predictor: social rank
+
+Assumptions: 
+
+1. Observations MUST be independent. 
+2. Normality of **Residuals** (CLT applies here per group)
+3. Homogeneity of variance (variance in response variable roughly equal across groups)
+
+```{r, eval=FALSE}
+hyenas
+
+#mutate a categorical rank variable
+#standardized rank has scaled rank from an integer to 1 for highest rank and -1 for lowest ranking and 0 for mid-ranking
+
+summary(hyenas$stan_rank)
+
+hyenas <- hyenas %>% mutate(rankCat = case_when(
+  stan_rank < -1+2/3 ~ "low",
+  stan_rank > -1+2/3 & stan_rank < 1-2/3 ~ "mid",
+  stan_rank > 1-2/3 ~ "high"
+))
+
+#LOOKING AT OUR DATA 
+#is the variance roughly equal per group? 
+ggplot(hyenas %>% filter(sex=="f"), aes(x=ageSM, fill=rankCat)) + geom_density(alpha=.5)
+#what is our sample size per group? 
+hyenas %>% filter(sex=="f") %>% drop_na(ageSM) %>% group_by(rankCat) %>% summarise(N=n())
+
+hyenasF <- hyenas %>% filter(sex=="f") %>% drop_na(ageSM)
+
+#test of homogeneity of variance
+car::leveneTest(ageSM ~ rankCat, data=hyenasF)
+#greater than 0.05 means no significant variation among variances 
+
+anovaModel <- aov(ageSM ~ rankCat, data=hyenasF)
+anovaModel
+summary(anovaModel) #significant p-value suggests there are differences among categories
+
+# Shapiro-Wilk test on residuals (is the error normal?!)
+shapiro.test(residuals(anovaModel))
+
+# QQ plot (visual check is usually better with large N)
+qqnorm(residuals(anovaModel))
+qqline(residuals(anovaModel))
+
+#shapiro-wilk significant, but value of .936 mostly normal
+
+# Post-hoc test (where are the differences?)
+TukeyHSD(anovaModel)
+#both mid and low significantly different from high, but not from each other 
+
+# Non-parametric alternative (if not normal)
+kruskal.test(ageSM ~ rankCat, data = hyenas)
+
+sumAgeFirstP <- hyenasF %>% group_by(rankCat) %>% summarise(
+  meanAgeFirstP = mean(ageSM),
+  sdAgeFirstP = sd(ageSM),
+  N=n(),
+  seAgeFirstP = sdAgeFirstP/sqrt(N),
+  ciLower = meanAgeFirstP - seAgeFirstP*1.96, 
+  ciUpper = meanAgeFirstP + seAgeFirstP*1.96
+)
+
+ggplot(sumAgeFirstP, aes(x=factor(rankCat, levels=c("low", "mid", "high"), labels=c("Low", "Mid", "High")), y=meanAgeFirstP)) +
+  geom_violin(data=hyenasF, aes(x=factor(rankCat, levels=c("low", "mid", "high"), labels=c("Low", "Mid", "High")), y=ageSM), fill="lightpink")+
+  geom_point(size=4, shape=1) +
+  geom_errorbar(aes(ymin=ciLower, ymax=ciUpper), width=.4) + 
+  theme_bw()+
+  labs(y="Average Age at First Parturition", x="Social Rank")
+
+
+
+```
+
+## 5. Two-way ANOVA
+
+Question: Does social rank (high, mid, low) **AND/OR** clan predict age at first parturition?
+Response: age at first parturition
+Predictors: Social rank AND clan 
+
+```{r, eval=FALSE}
+
+#check sample sizes 
+hyenasF %>% group_by(clan) %>% summarise(N=n()) 
+#uneven and less than 30 in some groups
+
+#check variance
+ggplot(hyenasF, aes(x=ageSM, fill=clan)) +geom_density(alpha=.5)
+#variance a bit different across groups... 
+
+# Homogeneity of variance
+car::leveneTest(ageSM ~ rankCat * clan, data = hyenasF)
+#not significant 
+
+# Two-way ANOVA: social rank * clan
+anovaModel2 <- aov(ageSM ~ rankCat * clan, data = hyenasF)
+summary(anovaModel2)
+
+# Normality of residuals
+shapiro.test(resid(anovaModel2))
+# QQ plot (visual check is usually better with large N)
+qqnorm(residuals(anovaModel2))
+qqline(residuals(anovaModel2))
+
+# Post-hoc for main effects (if interaction is not significant)
+#TukeyHSD(anovaModel2, which="rankCat")
+#TukeyHSD(anovaModel2, which="clan")
+
+# If interaction significant use emmeans 
+emmeans(anovaModel2, pairwise ~ rankCat | clan)
+emmeans(anovaModel2, pairwise ~ clan | rankCat)
+
+hyenasF$rankCat <- factor(hyenasF$rankCat, levels=c("low", "mid", "high"))
+
+# Interaction plot
+ggplot(hyenasF, aes(x=rankCat, y=ageSM, fill=clan)) +
+  geom_boxplot(alpha=0.5, position=position_dodge(width=0.8)) +
+  theme_bw() +
+  labs(x="Social Rank", y="Age at First Parturition", fill="Clan") +
+  ggtitle("Interaction of Rank and Clan on Age at First Parturition")
+
+# Plot it the other way
+ggplot(hyenasF, aes(x=clan, y=ageSM, fill=rankCat)) +
+  geom_boxplot(alpha=0.5, position=position_dodge(width=0.8)) +
+  theme_bw() +
+  labs(x="Clan", y="Age at First Parturition", fill="Rank") +
+  ggtitle("Interaction of Rank and Clan on Age at First Parturition")
+
+
+```
+
+## 6. Correlation Example
+
+**Question:** Is maternal social rank associated with the age at first parturition for female hyenas?
+
+**Response variable:** age at first parturition (continuous)  
+**Predictor variable:** maternal standardized rank (continuous)  
+
+**Assumptions for Pearson correlation:**
+1. Both variables are continuous.  
+2. Linear relationship between variables.  
+3. Bivariate normality (joint distribution of x and y is roughly normal).  
+4. No extreme outliers.  
+5. Independence of observations. 
+
+If assumptions are violated, use **Spearman's rank correlation**
+
+```{r, eval=FALSE}
+
+#are x and y both roughly normal? 
+hist(hyenasF$stan_rank)
+hist(hyenasF$ageSM)
+
+# Quick scatterplot (does the relationship look linear?)
+ggplot(hyenasF, aes(x=stan_rank, y=ageSM)) +
+  geom_point(alpha=0.6) +
+  geom_smooth(method="lm", se=FALSE, color="blue")+
+  geom_smooth(method="loess", color="red") #default method
+
+#joint normality 
+ggplot(hyenasF, aes(x=stan_rank, y=ageSM)) +
+  geom_point(alpha=0.5) +
+  geom_density_2d(color="blue")  # contour lines showing joint density
+#cloud is roughly elliptical and there aren’t strong outliers
+#cloud is left skewed, but large sample size correlation should be robust 
+
+corTest <- cor.test(hyenasF$stan_rank, hyenasF$ageSM, method="pearson")
+corTest
+
+# If assumptions violated, use Spearman
+corTest_spearman <- cor.test(hyenasF$stan_rank, hyenasF$ageSM, method="spearman")
+corTest_spearman
+#stronger correlation not biased by the skew 
+
+ggplot(hyenasF, aes(x=stan_rank, y=ageSM)) +
+  geom_point(alpha=0.6) +
+  geom_smooth(method="lm", se=TRUE, color="red") +
+  theme_bw() +
+  labs(x="Maternal Standardized Rank", y="Age at First Parturition",
+       title=paste0("Correlation: r = -0.44 "))
+
+
+
+
+```
+
+
+
