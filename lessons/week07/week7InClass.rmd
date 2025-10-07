@@ -1,6 +1,7 @@
 ---
-title: "Regression Practice Template"
+title: "Week 7 Classwork"
 output: html_document
+author: "YOUR NAME"
 date: "`r Sys.Date()`"
 editor_options: 
   chunk_output_type: console
@@ -59,7 +60,9 @@ Dataset Overview: (Knit to view)
 | `%fruit`              | Percent of diet that is fruit                   | Continuous numeric   |
 | `%leaves`             | Percent of diet that is leaves                  | Continuous numeric   |
 | `Sleeping group size` | Observed mean sleeping group size               | Continuous nume      |
-
+| `Group size combined` | Observed mean group size                        | Continuous nume      |
+| `Day range (m)`       | Observed travel distance                        | Continuous nume      |
+| `HR size average`     | Observed mean home range size                   | Continuous nume      |
 
 ## Problem 1: Continuous response vs Continuous predictor
 
