@@ -1,0 +1,289 @@
+---
+title: "Week8demo"
+output: html_document
+date: "2025-10-15"
+editor_options: 
+  chunk_output_type: console
+---
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(glmmTMB)
+library(DHARMa)
+library(emmeans)
+library(modelbased)
+library(performance)
+library(ggeffects)
+
+#set your working directory
+
+
+
+```
+
+What predicts body weight in a small mammal? 
+Looking at multiple predictors 
+```{r}
+#load mammals.Rdata 
+load("mammals.RData")
+
+summary(mammals)
+
+#check linearity assumption
+
+
+#look at the data
+
+
+#what do we notice about this dataset?
+
+#what is the direct/total effect of height on weight? 
+
+
+#check residuals for normality & homoscedasticity 
+simulateResiduals(m1, plot = TRUE)
+
+#what is the total effect of sex on weight? 
+
+
+#check residuals for normality & homoscedasticity 
+simulateResiduals(m2, plot = TRUE)
+
+#what is the direct/total effect of sex on height? 
+
+
+#check residuals for normality & homoscedasticity 
+simulateResiduals(m3, plot = TRUE)
+
+#multiple regression 
+
+
+#direct effect of sex and height 
+#look at t-values or z-scores for an idea of effect size relative to one another 
+
+#check for multicollinearity
+check_collinearity(m4)
+
+#check residuals for normality & homoscedasticity 
+simulateResiduals(m4, plot = TRUE)
+
+ggplot(mammals, aes(Height_cm, Weight_g, color=Sex)) +
+  geom_point(alpha = 0.7) +
+  geom_line(data=mammals %>% mutate(pWeight = predict(m4)), aes(x=Height_cm, y=pWeight, color=Sex)) +
+  theme_minimal()
+
+#which is the best interpretation? the model with a single predictor tells us the most useful information... adult females are going to be about 17 grams heavier... no need to take their heights first.
+#what is our question? what hypothesis are we testing? 
+
+
+```
+
+Does exercise improve lung function? 
+Effect of confounding variables
+```{r}
+#load lung data
+load("lungData.RData")
+summary(lungFunction)
+
+#look at the data 
+
+
+#simple linear regression
+
+simulateResiduals(l1, plot = TRUE)
+r2(l1)
+
+#what effect does age have? 
+
+
+r2(l2) #r2 is higher for this model than l1
+
+#what happens if we put Age and Exercise into the same model? 
+
+
+#exercise hours is still significant, but much smaller effect 
+r2(l3)
+
+#does age also affect exercise? 
+
+
+
+# Scatterplots
+ggplot(lungFunction, aes(Exercise_hours, LungFunction_L)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  theme_minimal() +
+  labs(title = "Lung Function vs Exercise (confounded by age)")
+
+ggplot(lungFunction, aes(Age, LungFunction_L)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  theme_minimal() +
+  labs(title = "Lung Function vs Age")
+
+ggplot(lungFunction, aes(Exercise_hours, LungFunction_L)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  geom_line(data=ggpredict(l3, terms = "Exercise_hours"), aes(x=x, y=predicted), color="red", size=1) +
+  theme_minimal() +
+  labs(title = "Lung Function vs Exercise (adjusted for age)")
+
+
+#check assumptions
+simulateResiduals(l3, plot = TRUE)
+check_collinearity(l3)
+#how much variation explained by model? 
+r2(l3)
+
+```
+
+Plant growth: 
+Suppose for example that you are growing some plants in a greenhouse. You want to know the difference in growth under different anti-fungal soil treatments, because fungus on the plants tends to reduce their growth. Plants are initially seeded and sprout. Their heights are measured. Then different soil treatments are applied. Final measures are the height of the plant and the presence of fungus. There are four variables of interest here: initial height, final height, treatment, and presence of fungus. Relative growth is the outcome of interest. But which of the other variables should be in the model? 
+
+```{r}
+set.seed(71)
+# number of plants
+N <- 100
+# simulate initial heights
+h0 <- rnorm(N,10,2)
+# assign treatments and simulate fungus and growth
+treatment <- rep( 0:1 , each=N/2 )
+fungus <- rbinom( N , size=1 , prob=0.5 - treatment*0.4 )
+h1 <- h0 + rnorm(N, 5 - 3*fungus)
+# compose a clean data frame
+d <- data.frame( h0=h0 , h1=h1 , treatment=treatment , fungus=fungus )
+
+d <- d %>% mutate(growth = h1/h0)
+
+#create the model
+
+
+# fungus has a negative effect as anticipated
+# does treatment have no effect? 
+# what is going on? 
+
+#checking fit 
+simulateResiduals(g1, plot = TRUE)
+check_collinearity(g1)
+r2(g1)
+
+```
+
+
+What is VIF anyway? When is multicollinearity a problem? 
+```{r}
+set.seed(123)
+n <- 100
+X1 <- rnorm(n)
+X2 <- X1 * 0.9 + rnorm(n, 0, 0.1)   # highly correlated with X1 (r ≈ 0.9)
+X3 <- rnorm(n)
+Y  <- 3*X1 + 2*X3 + rnorm(n)
+
+# X1 is the main predictor of interest that has a causal relationship with Y
+# X2 is highly correlated iwth X1 (we used X1 when creating X2)
+# X2 does not cause any variation in Y (based on the way we created Y)
+
+#look at the data
+
+
+#check linearity assumptions
+
+
+# simple regression between X1 and Y
+
+
+#adding X2- what happens? 
+
+
+
+check_collinearity(c2) 
+
+#adding X3 - what happens? 
+
+
+check_collinearity(c3)
+
+
+#final model
+
+
+check_collinearity(c4)
+simulateResiduals(c4, plot = TRUE) #also check residuals 
+r2(c4)
+
+```
+
+
+Does age affect mammal height and weight? 
+Non-linear predictors 
+```{r}
+#look at the data 
+
+
+#does this meet assumptions?! 
+
+
+#dealing with non-linear predictor variables 
+#create a simple linear regression 
+
+
+#adding a quadratic term
+
+
+ggplot(mammals, aes(Age_months, Weight_g)) + geom_point() +
+  geom_line(data=mammals %>% mutate(pred=predict(m5)), aes(x=Age_months, y=pred), color="blue", size=1) +
+  geom_line(data=mammals %>% mutate(pred=predict(m6)), aes(x=Age_months, y=pred), color="red", size=1)
+
+#should we control for height? 
+
+
+#what does this mean? 
+#does age not have an effect on weight? 
+
+#compare models 1 and models 7 (look at AIC)
+summary(m1) # weight ~ height
+summary(m7) # weight ~ height + age + age^2
+
+r2(m1) #how much variation does each explain? 
+r2(m7)
+
+#adding age only explains a tiny bit more than height alone 
+#but age does have a huge effect on height? 
+
+
+r2(m8) #age on height
+r2(m6) #age on weight
+#age actually explains a bit more variation in height than it does in weight... 
+
+ggplot(mammals, aes(Age_months, Height_cm)) + geom_point() +
+  geom_line(data=mammals %>% mutate(pred=predict(m8)), aes(x=Age_months, y=pred), color="red", size=1)
+
+simulateResiduals(m8, plot = TRUE)
+#underdispersion.. the model fits unexpectedly well for juveniles... 
+#you can see this for yourself, the curve is obviously better than a linear model but it's not going through the center of the cloud of points
+#this fake dataset also has a pretty tight relationship between height and age.. there's not much variance 
+
+
+
+```
+
+Week 8 Classwork: 
+Work in groups on a single file together. Let's use the primate brain dataset. 
+
+Draw a DAG in powerpoint or on paper that uses more than one predictor variable. Think carefully about which variables to include and explain why in your code when you're creating plots to initially to look at your data! 
+
+Develop a question, and spell out your hypotheses. Identify response and predictor variables clearly. 
+
+Create your model(s).
+
+Interpret the Estimates and p-values. 
+
+Posthoc: Use dharma to look at residuals, check for multicollinearity, and look at the model's R2. Interpret them in a few sentences. 
+
+```{r}
+load("primates.RData")
+
+
+
+```
