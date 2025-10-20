@@ -1,5 +1,5 @@
 ---
-title: "Week8demo"
+title: "Week 9 Demo"
 output: html_document
 date: "2025-10-15"
 editor_options: 
@@ -15,6 +15,8 @@ library(emmeans)
 library(modelbased)
 library(performance)
 library(ggeffects)
+library(dagitty)
+library(ggdag)
 
 #set your working directory
 
@@ -30,47 +32,107 @@ load("mammals.RData")
 
 summary(mammals)
 
-#check linearity assumption
+#checking assumptions: is the relationship linear? 
+ggplot(mammals, aes(Height_cm, Weight_g)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(se = FALSE) +
+  theme_minimal()
 
+#how are our variables distributed? 
+hist(mammals$Weight_g)
+hist(mammals$Height_cm)
 
-#look at the data
+#how are height and weight related? 
+dag <- dagitty("dag {
+  Weight <- Height
+}")
+ggdag(dag) + theme_dag()
+#height causes weight (the arrow points from height to weight)
 
-
-#what do we notice about this dataset?
 
 #what is the direct/total effect of height on weight? 
-
+#the response variable always goes first in a model response ~ predictor1 + predictor2 
+m1 <- 
 
 #check residuals for normality & homoscedasticity 
 simulateResiduals(m1, plot = TRUE)
+```
 
-#what is the total effect of sex on weight? 
 
+## What effect does sex have on height and weight? 
+
+Sex affects both height and weight
+
+Weight ~ sex (total effect of sex on weight including sex’s effect on height) 
+Height ~ sex (total and direct effect of sex on height) 
+Weight ~ height + sex (direct effect of sex on weight) 
+
+Three different questions: 
+
+-Causal effect of H on W?
+-Total casual effect of S on W?
+-Direct causal effect of S on W? 
+```{r}
+#what is the total effect of sex on weight? (a DAG is a hypothesis!)
+dag <- dagitty("dag {
+
+
+}")
+ggdag(dag) + theme_dag()
+#you can also play around with DAGS online at dagitty.net!
+
+# create a model
+m2 <- 
+
+# HOW DO WE INTERPET BOTH SLOPES?! 
+#the estimate for height stays about the same, but it gets more significant! sex accounts for some variation that was previously just noise 
 
 #check residuals for normality & homoscedasticity 
 simulateResiduals(m2, plot = TRUE)
 
-#what is the direct/total effect of sex on height? 
 
+#what is the direct/total effect of sex on weight? 
+m3 <- 
 
 #check residuals for normality & homoscedasticity 
 simulateResiduals(m3, plot = TRUE)
 
-#multiple regression 
-
-
-#direct effect of sex and height 
-#look at t-values or z-scores for an idea of effect size relative to one another 
-
-#check for multicollinearity
-check_collinearity(m4)
-
+#what is the direct/total effect of sex on HEIGHT? 
+m4 <- 
+  
 #check residuals for normality & homoscedasticity 
 simulateResiduals(m4, plot = TRUE)
 
+
+summary(m2)
+#direct effect of sex and height 
+#look at t-values or z-scores for an idea of relative effect size 
+
+#check for multicollinearity
+check_collinearity(m2)
+
+#how much variation does the model explain? 
+r2(m2)
+
+#how do the our three models looking at weight compare? 
+AIC(m1, m2, m3) 
+#AIC (Akaike Information Criterion) measures how well a model fits the data while penalizing complexity — lower AIC values indicate a better balance between fit and simplicity.
+
+
+# *** multiple regression isn’t asking how do both sex and height each affect weight (you could do 2 simple regressions for this)
+# *** multiple regression asks how they both affect weight while controlling for the effect of the other! 
+
+ggdag(dag) + theme_dag()
+summary(m2)
+#height mediates the relationship between sex and weight (most of sex's effect is through height, but there is also a small direct effect)
+#adding sex to the weight ~ height improves our estimate of the effect of height on weight
+#adding height to the weight ~ sex model tells us the difference in weight between sexes of the same height (without we just have the average difference between sexes which is also interesting information!)
+
+
+# plot the raw data and the model
 ggplot(mammals, aes(Height_cm, Weight_g, color=Sex)) +
   geom_point(alpha = 0.7) +
-  geom_line(data=mammals %>% mutate(pWeight = predict(m4)), aes(x=Height_cm, y=pWeight, color=Sex)) +
+  geom_line(data=mammals %>% mutate(pWeight = predict(m2)), aes(x=Height_cm, y=pWeight, color=Sex)) +
   theme_minimal()
 
 #which is the best interpretation? the model with a single predictor tells us the most useful information... adult females are going to be about 17 grams heavier... no need to take their heights first.
@@ -86,33 +148,71 @@ Effect of confounding variables
 load("lungData.RData")
 summary(lungFunction)
 
-#look at the data 
+#view the data and check linearity assumption 
+hist(lungFunction$LungFunction_L)
+hist(lungFunction$Exercise_hours)
+plot(lungFunction$Exercise_hours, lungFunction$LungFunction_L)
+
+#create a DAG 
+#hypothesis: exercise affects (causes) lung function 
+dag <- dagitty("dag {
+
+}")
+ggdag(dag) + theme_dag()
 
 
 #simple linear regression
+l1 <- 
 
 simulateResiduals(l1, plot = TRUE)
 r2(l1)
 
-#what effect does age have? 
+#what effect does age have?
+
+l2 <- 
+
+r2(l2) 
+
+#what is the effect of age after controlling for exercise? 
+#what is the effect of exercise after controlling for age? 
+
+dag <- dagitty("dag {
 
 
-r2(l2) #r2 is higher for this model than l1
+}")
+ggdag(dag) + theme_dag()
 
-#what happens if we put Age and Exercise into the same model? 
 
-
-#exercise hours is still significant, but much smaller effect 
+l3 <- 
+  
+#exercise hours is still significant, but much smaller effect
+#this suggests that age might be a confound, not just an additional effect
+#if age was independent from exercise, adding it should improve our estimate for exercise and decrease our p-value because now we account for why the effect of exercise might be less in some observations (they were older) which decreases noise and reduces the standard deviation
 r2(l3)
 
 #does age also affect exercise? 
 
+dag <- dagitty("dag {
+
+
+
+}")
+ggdag(dag) + theme_dag()
+
+l4 <- 
+
+summary(l3)
+#this explains why the estimate for exercise became smaller! exercise and lung function was a "spurious" correlation... age really causes both more strongly the true effect of exercise is much much smaller. 
+
+#this means when we look at lung ~ exercise, the slope for exercise is contaminated by age, because our "true" relationship is this triangular one! 
+summary(l1)
 
 
 # Scatterplots
 ggplot(lungFunction, aes(Exercise_hours, LungFunction_L)) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "lm", se = FALSE, color = "blue") +
+   geom_line(data=ggpredict(l3, terms = "Exercise_hours"), aes(x=x, y=predicted), color="purple", size=1) +
   theme_minimal() +
   labs(title = "Lung Function vs Exercise (confounded by age)")
 
@@ -122,12 +222,16 @@ ggplot(lungFunction, aes(Age, LungFunction_L)) +
   theme_minimal() +
   labs(title = "Lung Function vs Age")
 
-ggplot(lungFunction, aes(Exercise_hours, LungFunction_L)) +
+# Create data for plotting with each data point adjusted for age
+lungFunction$adj_lung <- fitted(l3) - fixef(l3)$cond["Age"]*(lungFunction$Age - mean(lungFunction$Age)) + resid(l3)
+
+#plot with adjusted lung function values 
+ggplot(lungFunction, aes(Exercise_hours, adj_lung)) +
   geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "blue") +
-  geom_line(data=ggpredict(l3, terms = "Exercise_hours"), aes(x=x, y=predicted), color="red", size=1) +
+  geom_line(data=ggpredict(l3, terms = "Exercise_hours"), aes(x=x, y=predicted), color="purple", size=1) +
   theme_minimal() +
   labs(title = "Lung Function vs Exercise (adjusted for age)")
+
 
 
 #check assumptions
@@ -136,11 +240,15 @@ check_collinearity(l3)
 #how much variation explained by model? 
 r2(l3)
 
+
+#chat about confounding vs mediating variables
+
 ```
 
 Plant growth: 
 Suppose for example that you are growing some plants in a greenhouse. You want to know the difference in growth under different anti-fungal soil treatments, because fungus on the plants tends to reduce their growth. Plants are initially seeded and sprout. Their heights are measured. Then different soil treatments are applied. Final measures are the height of the plant and the presence of fungus. There are four variables of interest here: initial height, final height, treatment, and presence of fungus. Relative growth is the outcome of interest. But which of the other variables should be in the model? 
 
+Direct VS Total effects
 ```{r}
 set.seed(71)
 # number of plants
@@ -156,9 +264,14 @@ d <- data.frame( h0=h0 , h1=h1 , treatment=treatment , fungus=fungus )
 
 d <- d %>% mutate(growth = h1/h0)
 
-#create the model
+#look at the data
 
 
+
+
+#create our model
+g1 <- 
+  
 # fungus has a negative effect as anticipated
 # does treatment have no effect? 
 # what is going on? 
@@ -167,6 +280,23 @@ d <- d %>% mutate(growth = h1/h0)
 simulateResiduals(g1, plot = TRUE)
 check_collinearity(g1)
 r2(g1)
+
+#draw the dag 
+dag <- dagitty("dag {
+
+
+
+}")
+ggdag(dag) + theme_dag()
+
+# if we want to know if treatment improves growth, what should our final model look like? 
+# what is the direct effect of treatment? 
+# what is the *total* effect of treatment? 
+
+g2 <- 
+summary(g2)
+
+#check fit (residuals, r2)
 
 ```
 
@@ -184,30 +314,30 @@ Y  <- 3*X1 + 2*X3 + rnorm(n)
 # X2 is highly correlated iwth X1 (we used X1 when creating X2)
 # X2 does not cause any variation in Y (based on the way we created Y)
 
-#look at the data
+hist(Y)
+hist(X1)
+hist(X2)
+hist(X3)
+
+plot(X1, Y)
+plot(X2, Y)
+plot(X3, Y)
+
+c1 <- lm(Y ~ X1) # simple regression we can see the strong significant relationship
+summary(c1)
+
+c2 <- lm(Y~X1 + X2) # now X1 is not significant, but X2 isn't either 
+summary(c2)
+
+check_collinearity(c2) #super high! 
+
+c3 <- lm(Y ~ X1 + X2 + X3) # a bit better, X3 also explains variation in Y, which helps the model assign some variation to X1 and less to X2 
+summary(c3)
+check_collinearity(c3) #still high collineraity 
 
 
-#check linearity assumptions
-
-
-# simple regression between X1 and Y
-
-
-#adding X2- what happens? 
-
-
-
-check_collinearity(c2) 
-
-#adding X3 - what happens? 
-
-
-check_collinearity(c3)
-
-
-#final model
-
-
+c4 <- lm(Y ~ X1 + X3) # best model 
+summary(c4)
 check_collinearity(c4)
 simulateResiduals(c4, plot = TRUE) #also check residuals 
 r2(c4)
@@ -218,25 +348,27 @@ r2(c4)
 Does age affect mammal height and weight? 
 Non-linear predictors 
 ```{r}
-#look at the data 
-
+hist(mammals$Age_months)
+hist(mammals$Weight_g)
 
 #does this meet assumptions?! 
+ggplot(mammals, aes(Age_months, Weight_g)) + geom_point()
 
 
 #dealing with non-linear predictor variables 
-#create a simple linear regression 
+m5 <- glmmTMB(Weight_g ~ Age_months, data=mammals)
+summary(m5)
 
-
-#adding a quadratic term
-
+m6 <- glmmTMB(Weight_g ~ Age_months + I(Age_months^2), data=mammals)
+summary(m6)
 
 ggplot(mammals, aes(Age_months, Weight_g)) + geom_point() +
   geom_line(data=mammals %>% mutate(pred=predict(m5)), aes(x=Age_months, y=pred), color="blue", size=1) +
   geom_line(data=mammals %>% mutate(pred=predict(m6)), aes(x=Age_months, y=pred), color="red", size=1)
 
 #should we control for height? 
-
+m7 <- glmmTMB(Weight_g ~ Age_months + I(Age_months^2) + Height_cm, data=mammals)
+summary(m7)
 
 #what does this mean? 
 #does age not have an effect on weight? 
@@ -249,9 +381,10 @@ r2(m1) #how much variation does each explain?
 r2(m7)
 
 #adding age only explains a tiny bit more than height alone 
-#but age does have a huge effect on height? 
+#but age does have a huge effect on height 
 
-
+m8 <- glmmTMB(Height_cm ~ Age_months + I(Age_months^2), data=mammals)
+summary(m8)
 r2(m8) #age on height
 r2(m6) #age on weight
 #age actually explains a bit more variation in height than it does in weight... 
