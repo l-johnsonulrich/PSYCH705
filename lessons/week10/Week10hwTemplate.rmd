@@ -1,0 +1,136 @@
+---
+title: "Homework: Boldness in Urban Foxes"
+output:
+  html_document: default
+date: "`r Sys.Date()`"
+editor_options:
+  chunk_output_type: console
+name: 'YOUR NAME'
+---
+
+```{r}
+# Load libraries
+
+
+
+```
+
+# Problem: Boldness Behavior in Urban Foxes
+
+You are studying boldness behavior in foxes living in urban and rural environments. Foxes were observed in different contexts, and multiple variables may influence how bold they are (approaching humans, exploring, etc.).
+
+### Variables:
+
+- boldness: measured as a proportion (0 = shy, 1 = very bold)
+- urbanization: continuous variable from 0 (rural) to 1 (highly urban)
+- age: factor (juvenile, adult)
+- sex: factor (male, female)
+- diet: factor (hunting, trash, cat_food)
+- predator: factor (absent, present)
+- toxoplasmosis: factor (negative, positive)
+
+Your task is to investiagte which variables influence boldness and how.
+
+### Step 1: Load the data
+```{r}
+load('urbanFoxes.Rdata')
+
+#inspect the dataframe 
+
+
+
+```
+
+### Step 2. Inspect data with histograms 
+```{r}
+
+
+
+
+
+
+
+```
+
+### Step 3.  Visualize potential relationships 
+```{r}
+
+
+
+
+```
+
+### Step 4. Draw a DAG
+```{r}
+
+
+
+
+
+
+
+
+```
+
+### Step 5. Fit Models
+```{r}
+
+# simple model with one predictor
+
+
+
+#check model fit 
+
+
+
+# add other predictors
+# Example: boldness ~ urbanization * age + toxoplasmosis
+
+
+
+#check model fit
+
+
+
+#compare models with AIC
+
+
+
+```
+
+### Step 6. Interpret Results
+
+- Which variables significantly affect boldness?
+- Is there evidence for interactions?
+- Does the model fit the data well (residuals, r2)?
+- How would you describe these results in natural language?
+
+---
+
+### Step 7. Plot final results 
+Use predicted data and raw data! 
+```{r}
+
+
+
+
+
+
+```
+
+### Step 8. Reflection 
+
+- What would happen if you ignored interactions?
+- Which predictors did you choose to include, and why?
+- How do DAGs help clarify causal assumptions?
+- Are there other variables not included that might matter biologically?
+
+---
+# Wrap-up
+
+1. Knit your file to .html
+2. Put both files in your git repo folder 
+3. Use 'git pull' to download any changes from github.com
+4. Use 'git add filename' to add them to git tracking
+5. Use 'git commit -m "comment"' to commit them for upload
+6. Use 'git push' to upload your changes from github.com 
