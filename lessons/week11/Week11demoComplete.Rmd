@@ -1,0 +1,453 @@
+---
+title: "Week 11 Demo"
+output:
+  html_document: default
+date: "2025-10-2"
+editor_options:
+  chunk_output_type: console
+---
+
+Set up your workspace. 
+```{r}
+library(dplyr)
+library(ggplot2)
+library(glmmTMB)
+library(DHARMa)
+library(emmeans)
+library(modelbased)
+library(performance)
+library(dagitty)
+library(ggdag)
+library(interplot)
+
+
+setwd()
+
+```
+
+### Example 1
+
+Review variable relationships
+```{r}
+#simulate data
+set.seed(123)
+n <- 1000
+sleep <- rnorm(n, 7, 1.5)
+caffeine <- rnorm(n, 200, 80)  # mg/day
+stress <- 30 - 2 * sleep + 0.03 * caffeine + 0.5 * sleep * (caffeine / 100) + rnorm(n, 0, 5)
+caff <- tibble(sleep, caffeine, stress)
+
+plot(caff$sleep, caff$stress) #hypothetical relationship that we would want to detect is linear 
+
+# Simple Model
+c1 <- glmmTMB(stress ~ sleep + caffeine, data = caff)
+summary(c1)
+
+# Full Model
+c2 <- glmmTMB(stress ~ sleep + caffeine + sleep*caffeine, data=caff)
+summary(c2)
+
+# Moderator-Only Model (drop direct effect of caffeine)
+c3 <- glmmTMB(stress ~ sleep + sleep:caffeine, data=caff)
+summary(c3)
+
+#check assumptions
+check_collinearity(c1)
+simulateResiduals(c3, plot=T)
+
+#plot model 2
+caffP <- emmeans(c2, ~ sleep*caffeine, at=list(sleep=seq(2.5,11,.1), caffeine=c(114,204,291))) %>% as_tibble() %>% mutate(caffeine_group = as.factor(case_when(caffeine==114 ~ 1, caffeine==204~2, caffeine==291~3)))
+ggplot(data=caff %>% mutate(caffeine_group = as.factor(ntile(caffeine, 3))), aes(x=sleep, y=stress, color=caffeine_group)) + geom_point() +
+  geom_line(data=caffP, aes(x=sleep, y=emmean, color=caffeine_group), linewidth = 1)
+
+#plot model 3
+caffP <- emmeans(c3, ~ sleep*caffeine, at=list(sleep=seq(2.5,11,.1), caffeine=c(114,204,291))) %>% as_tibble() %>% mutate(caffeine_group = as.factor(case_when(caffeine==114 ~ 1, caffeine==204~2, caffeine==291~3)))
+ggplot(data=caff %>% mutate(caffeine_group = as.factor(ntile(caffeine, 3))), aes(x=sleep, y=stress, color=caffeine_group)) + geom_point() +
+  geom_line(data=caffP, aes(x=sleep, y=emmean, color=caffeine_group), linewidth = 1)
+
+# This is an example of how to plot continous x continous interactions
+# Create groups for varying levels of one of the interaction variables (in this case using tertiles)
+?ntile
+
+#additive and interactive effect! caffeine elevates stress and reduces restorive power of sleep. 
+
+# Additive effect: 
+
+# Interactive/Multiplicative effect: 
+
+
+
+```
+
+
+### Example 2 
+
+Reviewing variable relationships
+```{r}
+#simulate data 
+set.seed(123)
+n <- 1000
+education <- rnorm(n, 16, 2)
+income <- 2000 * education + rnorm(n, 5000, 3000)
+health <- 0.0002 * income + 0.1 * education + rnorm(n, 0, 2)
+edu <- tibble(education, income, health)
+
+#linear? 
+plot(edu$education, edu$health)
+
+# Effect of education on health
+e1 <- glmmTMB(health ~ education, data = edu)
+summary(e1)
+
+# Full model
+e2 <- glmmTMB(health ~ education + income, data = edu)
+summary(e2)
+
+AIC(e1,e2)
+
+check_collinearity(e2)
+simulateResiduals(e2, plot=T)
+
+# Check relationship between income and education
+e3 <- glmmTMB(education ~ income, data=edu)
+summary(e3)
+
+
+```
+
+
+### Example 3
+
+Reviewing variable relationships
+```{r}
+#simulate data
+set.seed(123)
+n <- 1000
+habitat <- sample(c("open", "forest"), n, replace = TRUE)
+predator <- rbinom(n, 1, 0.5)
+# Stronger effect in open habitats
+vigilance <- 2 + 1.5 * predator + 
+             ifelse(habitat == "open", 1.2 * predator, 0.3 * predator) + 
+             rnorm(n, 0, 1)
+vig <- tibble(habitat, predator, vigilance)
+
+#linear? (categorical predictor, always "linear")
+boxplot(vig$predator, vig$vigilance)
+
+#create a simple model
+v2 <- glmmTMB(vigilance ~ predator * habitat, data = data_ecol)
+summary(v2)
+
+
+#plotting
+ggplot(data=vig, aes(x=as.factor(predator), y = vigilance)) + geom_violin() + facet_grid(~habitat)
+
+ggplot(data=vig, aes(x=habitat, y = vigilance)) + geom_violin() + facet_grid(~as.factor(predator))
+
+emmeans(v2, ~predator*habitat) %>% as_tibble() %>%
+  ggplot(aes(x=predator, y=emmean)) + geom_point() + geom_errorbar(aes(ymin=lower.CL, ymax=upper.CL)) + facet_grid(~habitat)
+
+
+```
+
+
+### Example 4
+
+```{r}
+#simulate data 
+set.seed(42)
+n <- 1200
+
+# SES = socioeconomic status (standardized continuous)
+ses <- rnorm(n, mean = 0, sd = 1)
+
+# Green space exposure (0-1), higher in higher-SES areas
+# logistic transform to keep within 0-1 but allow noise
+green_latent <- 0.8 * ses + rnorm(n, 0, 0.6)
+green_space <- plogis(green_latent)   # proportion/score between 0 and 1
+
+# Mental health outcome: higher = better mental health (continuous)
+# True causal effect: green_space has positive effect + SES has independent effect
+mental_health <- 0.6 * green_space + 0.9 * ses + rnorm(n, 0, 1.0)
+
+green <- tibble(ses, green_space, mental_health)
+green
+
+plot(green$green_space, green$mental_health)
+
+# simple model 
+g1 <- glmmTMB(mental_health ~ green_space, data = green)
+summary(g1)
+
+# adjusting for SES 
+g2 <- glmmTMB(mental_health ~ green_space + ses, data = green)
+summary(g2)
+
+check_collinearity(g2)
+simulateResiduals(g2, plot=T)
+
+#plot the results 
+# (2) Partial effect controlling for SES (residualize)
+#Step 1: Take out (“subtract”) the SES effect from both variables.
+green <- green %>%
+  mutate(
+    mh_resid = resid(lm(mental_health ~ ses, data = .)),
+    gs_resid = resid(lm(green_space ~ ses, data = .))
+  )
+
+#Step 2: Whatever’s left — the pattern between those “SES-free” parts — shows the unique link between green space and mental health.
+ggplot(green, aes(x = gs_resid, y = mh_resid)) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "lm") +
+  labs(title = "Partial association after removing SES (residualized)")
+
+
+```
+
+
+
+### Bonus: Colliders
+
+```{r}
+#simulate data
+set.seed(123)
+n <- 10000
+intelligence <- rnorm(n)
+athletic <- rnorm(n)
+admission <- rbinom(n, 1, plogis(1.5*intelligence + 1.5*athletic - 1))
+int <- tibble(intelligence, athletic, admission)
+
+#does athletic ability predict intelligence? 
+i1 <- glmmTMB(intelligence ~ athletic, data=int)
+summary(i1)
+
+#does athletic ability predict intelligence? 
+i2 <- glmmTMB(intelligence ~ athletic, data=int %>% filter(admission==1))
+summary(i2)
+
+#in reality this is not a causal relationship! 
+#the intelligent students represent a random sample of athleticism from the population
+#the athletic students represent a random sample of intelligence from the population 
+
+```
+
+
+
+Does age affect mammal height and weight? 
+Non-linear predictors 
+```{r}
+load("~/Dropbox/Documents_Hunter/Teaching/PSY705/lessons/week10/mammals.RData")
+
+hist(mammals$Age_months)
+hist(mammals$Height_cm)
+
+#does this meet assumptions?! 
+ggplot(mammals, aes(Age_months, Height_cm)) + geom_point() + geom_smooth(method="lm")
+
+#dealing with non-linear predictor variables 
+h1 <- glmmTMB(Height_cm ~ Age_months, data=mammals)
+summary(h1)
+
+r2(h1)
+simulateResiduals(h1, plot=T)
+hist(resid(h1)) #this is showing the same thing as the left panel in simulateResiduals
+plot(predict(h1), resid(h1)) #this is showing the same thing as the right panel in simulateResiduals
+
+ggplot(mammals, aes(Age_months, Height_cm)) + geom_point() + geom_smooth(method="lm")
+#residuals are all negative, then all positive, then all negative 
+#normal distribution, equal numbers above and below, but there's a distinct pattern 
+#poor fit!! 
+
+
+#modeling non-linear predictors! 
+#add a quadratic term (show ppt slides)
+h2 <- glmmTMB(Height_cm ~ Age_months + I(Age_months^2), data=mammals)
+summary(h2)
+
+#negative quadratic effect = ∩
+#positive quadratic effect = u
+
+ggplot(mammals, aes(Age_months, Height_cm)) + geom_point() +
+  geom_line(data=mammals %>% mutate(pred=predict(h1)), aes(x=Age_months, y=pred), color="blue", size=1) +
+  geom_line(data=mammals %>% mutate(pred=predict(h2)), aes(x=Age_months, y=pred), color="red", size=1)
+
+r2(h2) #explains more variation
+simulateResiduals(h2, plot = TRUE)
+#model fits better in the model but still a little wonky in the tails
+
+AIC(h1,h2)
+
+#what other transformation could we try? What other shape is this kind of similar to? 
+
+h3 <- glmmTMB(Height_cm ~ log(Age_months), data=mammals)
+summary(h3)
+
+simulateResiduals(h3, plot=T)
+r2(h3)
+
+AIC(h1,h2,h3) #logarithm is even better 
+
+ggplot(mammals, aes(Age_months, Height_cm)) + geom_point() +
+  geom_line(data=mammals %>% mutate(pred=predict(h1)), aes(x=Age_months, y=pred), color="blue", size=1) +
+  geom_line(data=mammals %>% mutate(pred=predict(h2)), aes(x=Age_months, y=pred), color="red", size=1) +
+  geom_line(data=mammals %>% mutate(pred=predict(h3)), aes(x=Age_months, y=pred), color="purple", size=1)
+
+#when we ask, which model fits the data better - it's literally this! it's easy to visualize with just one predictor transformed a few different ways... but adding other things to the model also improves fit! 
+
+#assumptions = model fit 
+
+
+
+```
+
+
+What is VIF anyway? When is multicollinearity a problem? 
+```{r}
+set.seed(123)
+n <- 100
+X1 <- rnorm(n)
+X2 <- X1 * 0.9 + rnorm(n, 0, 0.1)   # highly correlated with X1 (r ≈ 0.9)
+X3 <- rnorm(n)
+Y  <- 3*X1 + 2*X3 + rnorm(n)
+
+# X1 is the main predictor of interest that has a causal relationship with Y
+# X2 is highly correlated with X1 (we used X1 when creating X2)
+# X2 does not cause any variation in Y (based on the way we created Y)
+# X3 is another covariate that explains variation in Y (based on the way we created Y)
+
+#look at the data
+hist(Y)
+hist(X1)
+hist(X2)
+hist(X3)
+
+#check linearity assumption 
+plot(X1, Y)
+plot(X2, Y)
+plot(X3, Y)
+
+c1 <- lm(Y ~ X1) # simple regression we can see the strong significant relationship
+summary(c1)
+
+c2 <- lm(Y ~ X2)
+summary(c2) # simple regression it looks like X2 also has a very strong significant effect
+
+c3 <- lm(Y~X1 + X2) # now X1 is not significant, but X2 isn't either (both have large SE)
+summary(c3)
+
+check_collinearity(c3) #super high! 
+
+#what happens if we add a third predictor? 
+c4 <- lm(Y ~ X1 + X2 + X3) # a bit better, X3 also explains variation in Y, which helps the model assign some variation to X1 and less to X2 
+summary(c4)
+check_collinearity(c4) #still high collineraity 
+
+#remove one of the predictors (most likely X2 based on model c4)
+c4 <- lm(Y ~ X1 + X3) # best model 
+summary(c4)
+check_collinearity(c4)
+simulateResiduals(c4, plot = TRUE) #also check residuals 
+r2(c4)
+
+```
+
+
+### Random Effects
+For more see: https://glennwilliams.me/r4psych/mixed-effects-models.html
+
+```{r}
+#simulated data
+set.seed(123)
+# diagnostic: check obs per id and VarCorr for original sim
+n_id <- 100; n_obs <- 10; N <- n_id * n_obs
+id <- factor(rep(1:n_id, each = n_obs))
+
+u_id <- rnorm(n_id, 0, 4)          # random intercept SD = 4
+sleep <- rnorm(N, 7, 1.5)
+caffeine <- rnorm(N, 200, 80)
+stress <- 30 - 2 * sleep + 0.03 * caffeine + 0.5 * sleep * (caffeine / 100) + u_id[id] + rnorm(N, 0, 5)
+caff_orig <- tibble(id, sleep, caffeine, stress)
+
+set.seed(456)
+u_id2 <- rnorm(n_id, 0, 8)         # increase SD -> stronger signal
+person_mean_caff <- rnorm(n_id, 200, 40)   # person-level mean caffeine
+caffeine2 <- rep(person_mean_caff, each = n_obs) + rnorm(N, 0, 30)   # within-person noise
+sleep2 <- rnorm(N, 7, 1.2)
+stress2 <- 30 - 2 * sleep2 + 0.03 * caffeine2 + 0.5 * sleep2 * (caffeine2 / 100) + u_id2[id] + rnorm(N, 0, 3)
+caff2 <- tibble(id, sleep = sleep2, caffeine = caffeine2, stress = stress2)
+
+#create two models
+m_fixed <- glmmTMB(stress ~ sleep + caffeine + sleep:caffeine, data = caff2)
+summary(m_fixed)
+
+#add random effect
+m_random <- glmmTMB(stress ~ sleep + caffeine + sleep:caffeine + (1|id), data = caff2)
+summary(m_random)
+
+r2(m_random) # marginal = fixed effects, conditional = fixed + random
+icc(m_random) # unadjusted = total proportion of variation explained by random, adjusted = proportion of variance random effects explain after adjusting for fixed effects 
+
+simulateResiduals(m_random, plot=T)
+
+#plot the result same as in exercise #1
+
+caffP <- emmeans(m_random, ~ sleep*caffeine, at=list(sleep=seq(2.5,11,.1), caffeine=c(114,204,291))) %>% as_tibble() %>% mutate(caffeine_group = as.factor(case_when(caffeine==114 ~ 1, caffeine==204~2, caffeine==291~3)))
+ggplot(data=caff2 %>% mutate(caffeine_group = as.factor(ntile(caffeine, 3))), aes(x=sleep, y=stress, color=caffeine_group)) + geom_point() +
+  geom_line(data=caffP, aes(x=sleep, y=emmean, color=caffeine_group), linewidth = 1)
+
+
+
+
+
+```
+
+
+
+## Classwork 11: DAGs and Mediators, Moderations, Confounds, Interactions AND Random Effects 
+
+**Objective:** Work in small groups to explore confounds, mediators, moderators, interactions and random effects in biological data.
+Make sure to write all group members' names at the top of the file (either one student or all of them can push the file to github).
+
+**Instructions:**
+
+1. **Load your dataset:**
+
+```{r}
+load("primates.RData")
+
+
+
+```
+
+2. **Build a DAG**
+   - Identify your **response variable (Y)**.
+   - Identify at least **three predictors (X1, X2, X3)**.
+   - Draw the DAG using `dagitty` and `ggdag` OR using powerpoint OR by hand in a notebook.
+
+3. **Analyze**
+   - Identify one or more **random** effects! 
+   - Fit simple and complex models- try with and without the random effect. 
+   - Check model diagnostics (`simulateResiduals`, `r2`, `check_collinearity`).
+   - Use `estimate_slopes` or `emmeans` to explore marginal effects.
+   - Use AIC() to compare models. 
+   - Use icc() to look at the amount of variance explained by random effects. 
+
+4. **Visualize**
+   - Plot your model results using emmeans/predict and `ggplot2`.
+   - Use geom_point() for raw data points. 
+   - Use geom_line() and geom_ribbon() for predicted model slopes and confidence intervals.
+   - Label axes clearly. 
+
+6. **Interpret**
+   - Write 2-3 sentences describing your findings in **biological terms**.
+   - Explain why it was important to include a random effect. 
+
+# Wrap-up
+
+1. Knit your file to .html
+2. Put both files in your git repo folder 
+3. Use 'git pull' to download any changes from github.com
+4. Use 'git add filename' to add them to git tracking
+5. Use 'git commit -m "comment"' to commit them for upload
+6. Use 'git push' to upload your changes from github.com 
+
