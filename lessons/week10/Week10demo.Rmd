@@ -359,21 +359,21 @@ r2(p1)
 simulateResiduals(p1, plot=T)
 check_collinearity(p1)
 
-p2 <- glmmTMB(logECV ~ logHRS + logBodyMass + logLeaves + logFruit + log(foragingGS), data=primates)
+#dummy model without interactions in order to check VIFs
+p2 <- glmmTMB(logECV ~ logHRS + logBodyMass + foragingGS, data=primates)
 check_collinearity(p2)
 
 summary(p1)
 
-#marginal effect of home range size 
+#marginal (total) effect of home range size 
 estimate_slopes(p1, trend="logHRS")
 estimate_slopes(p1, trend="logBodyMass")
 estimate_slopes(p1, trend="foragingGS")
-estimate_slopes(p1, trend="logLeaves")
-estimate_slopes(p1, trend="logFruit")
+
 
 #interactions..
 summary(primates$foragingGS)
-estimate_slopes(p1, trend=c("logHRS"), by=list(foragingGS=seq(1,50, 10)))
+estimate_slopes(p1, trend=c("logHRS"), by=list(foragingGS=c(1,10,20,50,100,200)))
 #numbers can be hard to interpet, let's plot the interaction: 
 
 #plotting a continous*continuous interaction 
@@ -387,6 +387,8 @@ interplot(m=p3, var1="logHRS", var2 = "foragingGS") +
 #only in very small groups is there a positive effect of home range on brain size! 
 #cognitive offloading??!! 
 #how do we interpret this with the overall effect being significant? 
+
+hist(primates$foragingGS)
 
 mean(primates$foragingGS, na.rm=TRUE)
 
