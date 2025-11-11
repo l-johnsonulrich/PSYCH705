@@ -1,0 +1,446 @@
+---
+title: "Week12demo"
+output: html_document
+date: "2025-11-06"
+editor_options: 
+  chunk_output_type: console
+---
+
+Set up your workspace. 
+```{r}
+library(dplyr)
+library(ggplot2)
+library(glmmTMB)
+library(DHARMa)
+library(emmeans)
+library(modelbased)
+library(performance)
+library(dagitty)
+library(ggdag)
+library(interplot)
+
+setwd()
+
+```
+
+
+
+### Random Effects
+For more see: https://glennwilliams.me/r4psych/mixed-effects-models.html
+
+```{r}
+#simulated data
+set.seed(123)
+# diagnostic: check obs per id and VarCorr for original sim
+n_id <- 100; n_obs <- 10; N <- n_id * n_obs
+id <- factor(rep(1:n_id, each = n_obs))
+
+u_id <- rnorm(n_id, 0, 4)          # random intercept SD = 4
+sleep <- rnorm(N, 7, 1.5)
+caffeine <- rnorm(N, 200, 80)
+stress <- 30 - 2 * sleep + 0.03 * caffeine + 0.5 * sleep * (caffeine / 100) + u_id[id] + rnorm(N, 0, 5)
+caff_orig <- tibble(id, sleep, caffeine, stress)
+
+set.seed(456)
+u_id2 <- rnorm(n_id, 0, 8)         # increase SD -> stronger signal
+person_mean_caff <- rnorm(n_id, 200, 40)   # person-level mean caffeine
+caffeine2 <- rep(person_mean_caff, each = n_obs) + rnorm(N, 0, 30)   # within-person noise
+sleep2 <- rnorm(N, 7, 1.2)
+stress2 <- 30 - 2 * sleep2 + 0.03 * caffeine2 + 0.5 * sleep2 * (caffeine2 / 100) + u_id2[id] + rnorm(N, 0, 3)
+caff2 <- tibble(id, sleep = sleep2, caffeine = caffeine2, stress = stress2)
+
+
+
+#create two models
+m_fixed <- 
+
+
+#add random effect
+m_random <- 
+
+r2(m_random) # marginal = fixed effects, conditional = fixed + random
+icc(m_random) # unadjusted = total proportion of variation explained by random, adjusted = proportion of variance random effects explain after adjusting for fixed effects 
+
+simulateResiduals(m_random, plot=T)
+
+#plot the result same as in exercise #1 last week
+
+caffP <- emmeans(m_random, ~ sleep*caffeine, at=list(sleep=seq(2.5,11,.1), caffeine=c(114,204,291))) %>% as_tibble() %>% mutate(caffeine_group = as.factor(case_when(caffeine==114 ~ 1, caffeine==204~2, caffeine==291~3)))
+ggplot(data=caff2 %>% mutate(caffeine_group = as.factor(ntile(caffeine, 3))), aes(x=sleep, y=stress, color=caffeine_group)) + geom_point() +
+  geom_line(data=caffP, aes(x=sleep, y=emmean, color=caffeine_group), linewidth = 1)
+
+
+
+```
+
+
+### Count Data
+
+```{r}
+############################################################
+# 1. PURE POISSON EXAMPLE
+# Scenario: Bird survey along a gradient of vegetation density
+# Each observation = one 10-minute point count
+# Response = number of warblers detected
+############################################################
+
+# Simulate data
+set.seed(123)
+n <- 200
+veg_density <- runif(n, 0, 3)  # predictor: vegetation density (low to high)
+lambda <- exp(1 + 0.5 * veg_density)  # expected mean count
+warbler_count <- rpois(n, lambda)     # actual observed counts
+
+birds1 <- data.frame(veg_density, warbler_count)
+birds1 <- as_tibble(birds1)
+birds1
+
+# Visualize data
+
+
+
+# Fit Poisson model
+m1 <- 
+summary(m1)
+
+# Interpreting log link
+ 
+
+
+
+# Model diagnostics
+res1 <- simulateResiduals(m1)
+plot(res1)
+testDispersion(res1) # Should plot a uniform distribution between 0 and 1 with a mean of .5
+# Test results: A value of 1 means perfect Poisson-like variance (variance = mean). This is the ratio of variance/mean.
+testZeroInflation(res1) # Histogram: Red line should sit nicely within the distribution, expected number of 0s
+# This is the observed number of zeros divided by the mean number of zeros in the simulated datasets (higher than 1 = more zeros than expected)
+
+
+# Plotting Results
+ggplot(birds1, aes(x = veg_density, y = warbler_count)) +
+  geom_point(alpha = 0.4) +
+  geom_line(data=birds1 %>% mutate(pred=predict(m1, type="response")), aes(y=pred), color="blue")
+#adding type = response puts it back on a count scale 
+
+
+
+############################################################
+# 2. OVERDISPERSED EXAMPLE
+# Scenario: Same survey, but now birds are counted in 20 different sites.
+# Some sites are especially bird-rich (near rivers) or poor (dry scrub).
+# These random site effects inflate the variance beyond Poisson expectations.
+############################################################
+
+site <- rep(1:20, each = 10)
+u <- rnorm(20, 0, 0.5)  # unmeasured site quality effect
+lambda_over <- exp(1 + 0.5 * veg_density + u[site])
+warbler_over <- rpois(n, lambda_over)
+
+birds2 <- data.frame(veg_density, site, warbler_over)
+birds2 <- as_tibble(birds2)
+birds2
+
+# Visually explore data 
+hist(birds2$warbler_over)
+hist(birds2$veg_density)
+
+# Fit a simple Poisson (ignoring site effects)
+m2 <- 
+
+# Check fit
+res2 <- simulateResiduals(m2)
+plot(res2)
+testDispersion(res2) #overdispersed
+testZeroInflation(res2) #zero-inflated
+
+# Try adding a random effect for site
+m2_r <- 
+
+# Check fit
+res2_r <- simulateResiduals(m2_r)
+plot(res2_r)
+testDispersion(res2_r) #good!
+testZeroInflation(res2_r) #good! 
+
+# OR add a dispersion parameter by using a "negative binomial"
+# Compare to a better-fitting negative binomial model
+m2_nb <- 
+
+# Check fit
+res2_nb <- simulateResiduals(m2_nb)
+plot(res2_nb)
+testDispersion(res2_nb) #good!
+testZeroInflation(res2_nb) #good! 
+
+AIC(m2, m2_r, m2_nb)
+
+# Interpretation:
+# Overdispersion arises from unmodeled heterogeneity across sites.
+# Negative binomial allows extra variance (via dispersion parameter).
+
+############################################################
+# 3. ZERO-INFLATED EXAMPLE
+# Scenario: Some sites had no birds at all because of a drought year.
+# Even good habitats sometimes yield zero detections.
+# → More zeros than a Poisson would predict.
+############################################################
+
+zero_prob <- 0.4  # probability that site is unsuitable = 40%
+warbler_zero_infl <- ifelse(runif(n) < zero_prob, 0, rpois(n, lambda))
+
+birds3 <- data.frame(veg_density, warbler_zero_infl)
+birds3 <- as_tibble(birds3)
+
+#visualize data
+
+
+# Fit regular Poisson model
+m3 <- 
+
+# Check residuals
+res3a <- simulateResiduals(m3)
+plot(res3a)
+testOverdispersion(res3a)
+testZeroInflation(res3a)
+
+# Fit zero-inflated Poisson model
+m3_zi <- 
+
+# Check residuals
+res3b <- simulateResiduals(m3_zi)
+plot(res3b)
+testOverdispersion(res3b)
+testZeroInflation(res3b)
+
+# Compare model fits
+compare_performance(m3, m3_zi, rank = TRUE)
+
+# Interpretation:
+# Zero-inflation arises from "structural zeros" (no birds because habitat unsuitable),
+# not just random variation. Zero-inflated Poisson accounts for this.
+
+# Another example of "structural" zeroes would be if you counted the number of fish caught per person at a local park. Some people do not fish, so their count for fish is 0 because there's a second process going on... first the probability of fish or not fish, then the count for number of fish caught (if fishing).
+############################################################
+
+
+```
+
+## Binary Data
+
+```{r}
+# DEMO: Bernoulli (binary 0/1) vs aggregated Binomial
+# Biological context:
+#  - Bernoulli: point-count surveys: at each survey did we detect a warbler (1) or not (0)?
+#  - Binomial: nest success: out of n eggs in a nest, how many hatched (0..n)?
+
+# -----------------------------------------------------------------------
+# 1) BERNOUILLI / BINARY DATA (one trial per observation)
+# Example story: 200 point-count surveys. Predictor: veg_density (0-3).
+# True process: probability of detection increases with veg_density.
+# -----------------------------------------------------------------------
+set.seed(2025)
+n <- 200
+veg <- runif(n, 0, 3)              # vegetation density (predictor)
+
+# True logistic model for probability of presence
+# intercept = -1, slope = 0.8  -> baseline ~0.27, increases with veg
+eta <- -1 + 0.8 * veg
+p <- plogis(eta)                   # inverse logit -> probability
+presence <- rbinom(n, size = 1, prob = p)  # Bernoulli draws
+
+bern_df <- data.frame(veg, presence)
+bern_df <- as_tibble(bern_df)
+bern_df
+
+#examine variables 
+
+
+
+# Fit Bernoulli logistic regression (GLM; can also be glmm if needed)
+m_bern <- 
+
+  
+#log odd scale, so we use exp() to transform same as with Poisson
+
+ 
+
+# DHARMa diagnostics
+res_bern <- simulateResiduals(m_bern, plot = FALSE)
+plot(res_bern)             # QQ + residuals vs predicted
+#note the Dharma is creating simulated residuals and transforming them to a uniform distribution, with poisson or binomial families the actual residuals are NOT going to be normal or uniform (it acutally does this with the linear models too)
+#so for a linear model we're checking normality with the left plot, with a binomial model we can use the same left plot to check uniformity
+
+#looks wonky without dharma:
+
+
+
+# Visualize predicted probability curve (with observed jitter)
+ggplot(bern_df, aes(x=veg, y=presence)) + geom_jitter(height=0.03, alpha=0.5) + 
+  geom_line(data=bern_df %>% mutate(prob=plogis(predict(m_bern))), aes(x=veg, y=prob))
+#similar to just taking the proportion of 1s... this gives the probability of detecting a bird at each vegetation level 
+#plogis transforms our predictors from the log-odds scale to probabilities (which matches the binary scale on the y-axis)
+
+
+# -----------------------------------------------------------------------
+# 2) BINOMIAL (aggregated) DATA
+# Example story: 100 nests observed. For each nest, we know number of eggs (n_eggs)
+# and number hatched (successes). Predictor: veg_density (nest-level).
+# -----------------------------------------------------------------------
+m_nests <- 100
+veg_n <- runif(m_nests, 0, 3)
+
+# Let clutch size vary (3-6 eggs)
+n_eggs <- sample(3:6, m_nests, replace = TRUE)
+
+# True underlying probability of hatching (depends on vegetation)
+eta2 <- -0.2 + 0.6 * veg_n
+p_n <- plogis(eta2)
+
+# Simulate successes out of n_eggs -> Binomial draws
+hatched <- rbinom(m_nests, size = n_eggs, prob = p_n)
+
+bin_df <- data.frame(veg = veg_n, hatched = hatched, n_eggs = n_eggs)
+bin_df <- as_tibble(bin_df)
+bin_df
+
+#visualize data
+
+
+# Fit binomial model using successes / failures (cbind)
+m_bin <- 
+
+# DHARMa diagnostics
+res_bin <- simulateResiduals(m_bin, plot = FALSE)
+plot(res_bin)
+testDispersion(res_bin)
+testZeroInflation(res_bin)  # can be informative if many nests had 0 hatchings
+
+# Visualizing model results 
+ggplot(bin_df, aes(x = veg, y = hatched / n_eggs, size = n_eggs)) +
+  geom_jitter(height = 0.02, alpha = 0.6) +
+  geom_line(data=bin_df %>% mutate(prob=plogis(predict(m_bin))), aes(x=veg, y=prob), size=1, color="blue")
+
+
+```
+
+
+## Proportion Data
+
+Or data that is continuous but bounded (e.g. -1 to 1 can be rescaled to 0 to 1)
+```{r}
+#Wipe workspace
+rm(list=ls())
+# Simulate data
+set.seed(123)
+n <- 150 # Number of sites
+# Predictor: habitat type
+habitat <- factor(sample(c("Forest", "Grassland", "Wetland"), n, replace = TRUE))
+# Simulate continuous proportion data using a Beta distribution
+library(extraDistr)
+prop_cover <- rbeta(n, shape1 = 2, shape2 = 5)
+# Add a few exact zeros and ones to simulate real data
+prop_cover[c(5, 20)] <- 0
+prop_cover[c(10, 50)] <- 1
+
+# Create data frame
+birds <- data.frame(prop_cover, habitat)
+
+# "Squeeze" the data so all values are strictly in (0,1), (Smithson & Verkuilen 2006)
+birds$prop_squeezed <- (birds$prop_cover * (n - 1) + 0.5) / n
+
+# What it does: slightly rescales all observations, not just 0s and 1s.
+# Why it works: it guarantees all values fall strictly in (0,1), preserves relative ranking, and stabilizes variance for Beta regression.
+# Pros: theoretically sound, preserves the Beta distribution shape, simple for small datasets.
+# Cons: slightly moves all data, not just the problematic boundaries.
+
+# 0-1 Adjustment 
+birds <- birds %>% mutate(prop_adj = case_when(
+  prop_cover == 0 ~ 0.000001,
+  prop_cover == 1 ~ 0.999999,
+  TRUE ~ prop_cover 
+))
+
+# What it does: keeps all other values exactly the same.
+# Pros: only alters the true zeros and ones — more intuitive, preserves original data for the vast majority of points.
+# Cons: extreme values can still slightly dominate the model fit (Beta logit link can be sensitive near 0 or 1).
+
+birds <- as_tibble(birds)
+birds
+
+# Explore the data
+
+
+
+# Fit Beta regression
+m_beta <- 
+
+summary(m_beta)
+
+# Check Model Fit
+res <- simulateResiduals(m_beta)
+plot(res)
+
+#Try with the squeezed data 
+m_beta2 <- 
+
+summary(m_beta2)
+
+# Check Model Fit
+res <- simulateResiduals(m_beta2)
+plot(res)
+
+# Plot the results
+ggplot(birds, aes(x = habitat, y = prop_squeezed)) +
+  geom_jitter(width = 0.2, alpha = 0.4) +
+  geom_point(data=emmeans(m_beta2, ~ habitat, type="response") %>% as_tibble(), aes(x=habitat, y=response), color="red", size=3) +
+  geom_errorbar(data=emmeans(m_beta2, ~ habitat, type="response") %>% as_tibble(), aes(x=habitat, y=response, ymin = asymp.LCL, ymax = asymp.UCL), color="red", width=.5)
+
+
+
+```
+
+
+## Week 12 Classwork: 
+
+```{r}
+#simulated cognition dataset
+load(cognition.RData)
+
+
+```
+
+
+1. **Build a DAG**
+   - Identify your **response variable (Y)**.
+   - Identify 2-3 predictors. 
+   - Draw the DAG using `dagitty` and `ggdag` OR using powerpoint OR by hand in a notebook. 
+
+3. **Analyze**
+   - Identify one or more **random** effects! 
+   - Fit simple and complex models- try with and without the random effect. 
+   - Check model diagnostics (`simulateResiduals`,`check_collinearity`).
+   - Use `estimate_slopes` or `emmeans` to explore marginal effects.
+   - Use AIC() to compare models. 
+   - Use icc() to look at the amount of variance explained by random effects. 
+
+4. **Visualize**
+   - Plot your model results using emmeans/predict and `ggplot2`.
+   - Use geom_point() for raw data points. 
+   - Use geom_line() for predicted model slopes.
+   - Label axes clearly. 
+
+6. **Interpret**
+   - Write 2-3 sentences describing your findings in **biological terms**.
+   - Interpret each slope (and transform it so that it makes sense in natural language). Increases/decreases? 
+   - Interpret/describe the random variables. 
+   - Mention your p-values, were results significant? 
+
+# Wrap-up
+
+1. Knit your file to .html
+2. Put both files in your git repo folder 
+3. Use 'git pull' to download any changes from github.com
+4. Use 'git add filename' to add them to git tracking
+5. Use 'git commit -m "comment"' to commit them for upload
+6. Use 'git push' to upload your changes from github.com 

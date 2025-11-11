@@ -1,0 +1,179 @@
+---
+title: "Dog Bite Data: GLMM & Zero-Inflation Homework"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(dplyr)
+library(ggplot2)
+library(glmmTMB)
+library(DHARMa)
+```
+
+## Introduction
+
+In this homework, we explore dog bite counts in a dataset with multiple breeds. Dogs are observed over multiple months, and the number of bites is recorded. Some dogs never bite, making the data zero-inflated. We’ll practice GLMMs, zero-inflation, and random effects.
+
+Simulate dataset:
+```{r}
+set.seed(42)
+
+n_dogs <- 150
+n_breeds <- 15
+n_months <- 6
+
+# Dog-level info
+
+dog_df <- data.frame(
+dogID = paste0("Dog", 1:n_dogs),
+breed = sample(paste0("Breed", 1:n_breeds), n_dogs, replace = TRUE),
+age_cat = sample(c("puppy","adult","senior"), n_dogs, replace = TRUE),
+sex = sample(c("M","F"), n_dogs, replace = TRUE),
+trained_commands = sample(5:25, n_dogs, replace = TRUE)
+)
+
+# Expand to repeated measures
+
+dog_obs <- dog_df %>%
+slice(rep(1:n(), each = n_months)) %>%
+mutate(month = rep(1:n_months, times = n_dogs))
+
+# Random effects
+
+breed_re <- rnorm(n_breeds, 0, 0.7)
+names(breed_re) <- paste0("Breed", 1:n_breeds)
+dog_re <- rnorm(n_dogs, 0, 0.5)
+names(dog_re) <- dog_df$dogID
+
+# Fixed effects
+
+age_eff <- c("puppy"=0.5, "adult"=0, "senior"=-0.3)
+train_eff <- -0.05  # more trained commands, fewer bites
+
+# Linear predictor
+
+dog_obs <- dog_obs %>%
+rowwise() %>%
+mutate(
+log_lambda = -1 +
+age_eff[age_cat] +
+train_eff * trained_commands +
+breed_re[breed] +
+dog_re[dogID],
+lambda = exp(log_lambda),
+# zero-inflated Poisson
+bite_count = ifelse(runif(1) < 0.4, 0, rpois(1, lambda))
+) %>%
+ungroup()
+
+head(dog_obs)
+
+```
+
+## Problem 1: Data Exploration
+
+1. Make a histogram of bite_count. What do you notice about zeros? 
+[Type answer here.]
+
+2. Make a boxplot of bite_count by age category. Any trends?
+[Type answer here.]
+
+
+```{r}
+# Histogram
+
+ggplot(dog_obs, aes(x = bite_count)) +
+geom_histogram(binwidth = 1, fill="lightblue", color="black") +
+labs(x="Bite count", y="Number of observations")
+
+# Boxplot
+
+ggplot(dog_obs, aes(x = age_cat, y = bite_count)) +
+geom_boxplot(fill="lightgreen") +
+labs(x="Age category", y="Bite count")
+
+```
+
+**Question:** Based on the histogram, do you think a Poisson model is sufficient? Why or why not?
+[Insert Answer Here]
+
+## Problem 2: Fit a GLMM
+
+Fit a Poisson GLMM predicting bite_count from trained_commands and age_cat, with breed as a random effect.
+```{r}
+# Fill in the code
+
+# Hint: family = poisson, random effect = (1|breed)
+
+m1 <- glmmTMB( # your formula here
+  family = poisson,
+  data = dog_obs)
+
+summary(m1)
+icc(m1)
+
+emmeans(m1, ~age_cat, type="response")
+estimate_slopes(m1, trend="trained_commands")
+```
+
+**Questions:**
+
+Interpret the fixed effect of trained_commands. 
+[Type answer here.]
+
+How much variation is there between breeds (look at random effect variance)?
+[Type answer here.]
+
+What might be a problem with this model given the histogram of zeros?
+[Type answer here.]
+
+## Problem 3: Residual diagnostics
+```{r}
+#Simulate residuals using DHARMa:
+res <- simulateResiduals(m1)
+plot(res)
+
+#Check overdispersion
+testDispersion(res)
+```
+
+**Questions:**
+
+Does the QQ plot suggest any problems?
+[Type answer here.]
+
+Is there evidence of overdispersion?
+[Type answer here.]
+
+Based on these checks, what model adjustment might you consider? (Hint: zero-inflated Poisson, additional random effects, or both)
+[Type answer here.]
+
+## Problem 4: Fit a zero-inflated poisson.
+```{r}
+m2 <- glmmTMB(
+  bite_count ~ trained_commands + age_cat + (1|breed),
+  ziformula = ~1,
+  family = poisson,
+  data = dog_obs
+)
+summary(m2)
+res2 <- simulateResiduals(m2)
+plot(res2)
+```
+
+**Question**: Is the zero-inflated model a better fit? 
+[Type answer here.]
+
+# Wrap-up
+
+1. Knit your file to .html
+2. Put both files in your git repo folder 
+3. Use 'git pull' to download any changes from github.com
+4. Use 'git add filename' to add them to git tracking
+5. Use 'git commit -m "comment"' to commit them for upload
+6. Use 'git push' to upload your changes from github.com 
