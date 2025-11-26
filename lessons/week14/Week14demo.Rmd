@@ -1,0 +1,279 @@
+---
+title: "Week14demo"
+author: "Lily Johnson-Ulrich"
+date: "2025-11-20"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Set up your workspace. 
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(glmmTMB)
+library(DHARMa)
+library(emmeans)
+library(modelbased)
+library(performance)
+library(dagitty)
+library(ggdag)
+library(interplot)
+
+setwd()
+
+```
+
+
+Loading Data 
+```{r, include=FALSE}
+#load our data
+cars <- as_tibble(mtcars)
+
+#let's grab the car names
+cars <- cars %>% mutate(model = row.names(mtcars))
+
+#let's also add a manufacturer column 
+cars <- cars %>% mutate(make = sub(" .*", "", model))
+
+#a lot of these are special names not the manufacturer so let's rewrite it further to match
+cars %>% group_by(make) %>% summarise(N=n()) %>% print(n=Inf)
+
+#for the American brands we can use the overall manufacturer and we can clump the European and Japanese brands since there's not so many of them (or only 1 each)
+cars <- cars %>% mutate(make = case_when(
+  make == "Merc" ~ "Merc",
+  make %in% c("Pontiac","Camaro","Cadillac") ~ "GM",
+  make %in% c("AMC", "Hornet") ~ "AMC",
+  make %in% c("Dodge","Valiant","Chrysler", "Duster") ~ "Chrysler",
+  make %in% c("Ford", "Lincoln") ~ "Ford",
+  make %in% c("Ferrari","Maserati","Porsche","Lotus","Volvo","Fiat","Opel","Peugeot","Renault")~"Europe",
+  make %in% c("Datsun","Mazda","Toyota","Honda") ~ "Japan"
+))
+#how many cars in each category? 
+cars %>% group_by(make) %>% summarise(N=n())
+cars
+
+#let's add a categorical variable for "class"
+cars <- cars %>% mutate(
+  class = case_when(
+    hp < 100 ~ "Economy",
+    hp < 200 ~ "Standard",
+    TRUE     ~ "HighPerformance"))
+cars
+```
+
+## A priori hypothesis testing 
+(How we've been doing it so far!)
+```{r}
+# A priori hypothesis testing
+# Is miles per gallon affected by weight? 
+  # Control variables: automatic vs manual also affects mpg, include as a control
+  # Should we add a randome effect of Make? (If we want to control for non-measured things like aerodynamics etc.)
+?mtcars
+
+# A simple DAG 
+dag <- dagitty("dag {
+  mpg <- wt
+  mpg <- am 
+}")
+ggdag(dag) + theme_dag()
+
+hist(cars$mpg)
+
+#simple model 
+
+c1 <- glmmTMB(mpg ~ wt, data=cars)
+summary(c1)
+
+c2 <- glmmTMB(mpg ~ wt + am, data=cars)
+summary(c2)
+
+c3 <- glmmTMB(mpg ~ wt + am + (1|make), data=cars)
+summary(c3)
+icc(c3) #no additional variation explained by make 
+
+AIC(c1,c2,c3) #first model is the best! 
+
+```
+
+## Model Selection
+Maybe we're not really sure what influences mpg and we want to use this data to generate hypotheses about what does (which we could then test on a larger sample of cars).
+```{r}
+#create a full model with all possible variables 
+full <- lm(mpg ~ ., data = mtcars) # the . means all variables (not using our frame with the mutated categorical effects)
+
+#Backwards Selection (we can use a function for this)
+step(full, direction = "backward")
+
+# the AIC for each variable is the what the AIC changes to IF the variable is removed (so WITHOUT that variable) compared to the overall model AIC
+# this means the model is testing the removal of every variable one at a time and comparing it to the model before removal
+
+s1 <- glmmTMB(mpg ~ wt + qsec + am, data=cars)
+summary(s1)
+#here automatic vs manual actually is significant when we control for quarter mile time! 
+
+AIC(c1, s1) #backwards selection did find a better fitting model 
+
+
+# Forward Selection
+# specify a model to start from and a full model (different from backwards selection)
+step(lm(mpg ~ 1, data = mtcars),
+     scope = formula(full),
+     direction = "forward")
+
+s2 <- glmmTMB(mpg ~ wt + cyl + hp, data=cars)
+summary(s2) #different model!!
+
+AIC(c1, s1, s2) #s1 actually found a better fitting model 
+
+# Model Dredging
+
+library(MuMIn)
+options(na.action = "na.fail")
+dd <- dredge(full)
+head(dd) #but note that the difference in AIC values is very close! 
+
+s3 <- glmmTMB(mpg ~ am + qsec + wt, data=cars) #same as backwards selection
+summary(s3)
+
+# Model Averaging 
+ma <- model.avg(dd, subset = delta < 4, fit=TRUE) #rule of them often used is 2, but even models out to 4 are still not so different from the top model that they shouldn't be considered 
+summary(ma)
+
+#hard to run model diagnostics or get predicted values out of a model of this class! 
+#rule of thumb is to check model diagnostics on the full model and/or get estimates of coefficients on the full model 
+#but.. you CAN use predict() on averaged models! (as this is one of the main reasons to use model averaging)
+
+
+#none of these examples tested interactions, would need to put these in the full model as well. 
+fullx <- lm(mpg ~ cyl + disp + hp + drat + wt + qsec + vs + am + gear + carb +
+              wt:hp + wt:qsec + am:hp + cyl:disp + cyl:hp + vs:am + gear:am, data = cars)
+
+options(na.action = "na.fail")
+ddx <- dredge(fullx)
+head(ddx) #might take a lot longer (dd had 1024 possible models, this will have way more)
+
+s4 <- glmmTMB(mpg ~ hp + wt + hp:wt, data=cars)
+summary(s4)
+
+
+#compare all the models 
+AIC(c1, s1, s2, s3, s4) #s4 is actually way better! (but lots of top models)
+
+max <- model.avg(ddx, subset = delta < 4, fit=TRUE) 
+summary(max) #even in the averaged models we still would have basically the same conclusions (but the predictions might be improved for relationships between weight and mpg for example)
+
+predict(max) #works on averaged models! but emmeans and estimate slopes will not 
+
+
+#plotting s4 (final model)
+
+#create an interplot to view interaction
+s4lm <- lm(mpg ~ hp + wt + hp:wt, data=cars)
+summary(s4lm)
+interplot(s4lm, var1="hp", var2="wt") + labs(x="Weight", y="Effect of HP on MPG")
+interplot(s4lm, var1="wt", var2="hp") + labs(x="Horsepower", y="Effect of Weight on MPG")
+
+#create a ggplot interaction effect
+preds <- cars %>%
+  mutate(hp_group = ntile(hp, 3)) %>%
+  group_by(hp_group) %>%
+  summarise(hp = mean(hp)) %>%
+  tidyr::expand_grid(wt = seq(min(cars$wt), max(cars$wt), length.out = 100)) %>%
+  mutate(mpg = predict(s4, ., type="response"))
+
+ggplot(data = preds, aes(wt, mpg, color = factor(hp_group))) +
+  geom_line(size = 1.1) +
+  labs(color = "HP tertile")
+
+
+
+```
+
+
+Standardizing predictors
+```{r}
+###########################################################
+# Option 1: Use base R's scale() to center and scale
+###########################################################
+
+# scale() subtracts the mean and divides by SD
+cars_scaled <- cars %>%
+  mutate(across(cyl:carb, ~ as.numeric(scale(.x))))
+
+# All predictors now have mean ~0 and SD ~1
+cars_scaled
+
+###########################################################
+# Option 2: Scale manually (for showing what scale() does)
+###########################################################
+
+cars_scaled <- cars %>% mutate(across(cyl:carb, ~ ( .x - mean(.x) ) / sd(.x)))
+
+# All predictors now have mean ~0 and SD ~1
+cars_scaled
+
+# Fit models
+s1 <- glmmTMB(mpg ~ hp + wt + hp:wt, data = cars)           # unscaled
+s2 <- glmmTMB(mpg ~ hp + wt + hp:wt, data = cars_scaled)  # scaled
+
+#compare models
+summary(s1)
+summary(s2)
+
+#look at residuals 
+simulateResiduals(s1, plot = TRUE)
+simulateResiduals(s2, plot = TRUE)
+#should be identical
+
+#compare model fit
+AIC(s1,s2) #identical 
+
+```
+
+How can standardizing improve model convergence? 
+```{r}
+set.seed(1)
+
+# create fake hierarchical count data
+group <- factor(rep(1:40, each = 20))
+x <- runif(800, 0, 10000)  # huge scale range
+eta <- 0.0003 * x + rnorm(40)[group]
+y <- rpois(800, lambda = exp(eta))
+
+dat <- data.frame(y, x, group)
+
+# Model 1: unscaled (often throws convergence warnings)
+m_unscaled <- glmmTMB(y ~ x + (1 | group), 
+                    data = dat, 
+                    family = poisson)
+summary(m_unscaled)
+
+#“Model failed to converge”
+#“Hessian is not positive definite”
+# huge gradient values
+# NA/NaN function evaluation 
+
+
+#with scaling
+dat$x_scaled <- scale(dat$x)
+
+m_scaled <- glmmTMB(y ~ x_scaled + (1 | group),
+                  data = dat,
+                  family = poisson)
+
+summary(m_scaled)
+
+#glmmTMB also handles convergence better than lme4(lm, glm, glmm)
+```
+
+### Why this happens in the GLMM example
+
+- x spans from 0 to 10,000, so the linear predictor η=βx spans a huge numeric range.
+- Exponential link magnifies numeric instability: exp(eta) easily overflows.
+- The optimizer must adjust random intercepts and fixed effects simultaneously using very uneven step sizes → messy gradients.
+
+**Scaling keeps all predictors in a compact, similar range → stable optimization.**
+
+
