@@ -1,0 +1,157 @@
+---
+title: "Week 14 Classwork"
+author: "YOUR NAME"
+date: sys
+output: html_document
+---
+
+Set up your workspace. 
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(glmmTMB)
+library(DHARMa)
+library(emmeans)
+library(modelbased)
+library(performance)
+library(dagitty)
+library(ggdag)
+library(interplot)
+library(MuMIn)
+
+setwd() #set your working directory here 
+```
+
+## Inhibitory Control in Spotted Hyenas 
+
+This is a dataset I collected on wild spotted hyenas and includes their trials with the "cylinder test" which is a clear cylinder with meat inside and measures something akin to "self-control". Hyenas have to retrieve the meat through the openings on either end of the cylinder without bumping into it. I.e., they have to avoid going straight for the meat and bonking the clear barrier. If they retrieve the meat without bonking into the cylinder a trial is a "pass" and if the bonk the cylinder the trial is a "fail" (even if they later get the meat).
+
+Inhibition is hypothesized to be important in complex social groups, especially those with high fission-fusion dynamics (breaking up into small subgroups and then rejoining). Animals have to keep track of who is lower ranking and who is higher ranking and inhibit behaviors like aggression or feeding in the presence of high ranking individuals. 
+
+IF social complexity favors inhibitory control THEN... we should predict that: 
+
+1. Low ranking hyenas should be more likely to pass trials. 
+2. Male hyenas should be more likely to pass trials because they all end up very low ranking as adults and also have larger prefrontal cortices than females. 
+3. Hyenas living in larger groups should more likely to pass trials because there are more indiviudals to keep track of and potentially inhibit behaviors around. 
+
+Predictors of interest:
+1. Sex: SEX
+2. Rank: RANK_SC (rank scaled from -1 to 1)
+3. Clan size (size of group in which they live): CLAN SIZE, COHORT (size of cub cohort they grew up in)
+
+Potential Confounds:
+1. Age: AGE_MO, AGE_CLASS_YR (under over 2 years), LIFE_HISTORY (under over first parturition/dispersal), AGE_MO_EST (ages in months with estimated ages for subjects without birthdates)
+2. Immigration status (males): NATAL_IMM (maybe males only develop stronger inhibition as adults?)
+3. Subject ID: SUBJECT
+4. Clan: CLAN
+5. Body condition: BODY
+6. Migration (food availability): MIGRATION
+7. Group size - other hyenas present at trial?: GROUP_SIZE
+8. Higher rankers - higher ranking hyenas present at trial?: HIGH_RANKERS
+9. Trial #: TIME_LAST_TRIAL, TRIAL, SESSION_TRIAL
+10. Approach: LATENCY_BINARY2 (latency to approach = motivation), APPROACH (angle of approach may affect likelihood of bonking)
+11. Life History Status: For males and females (pre/post dispersal or pre/post first parturition)
+12. Park: Are the clans in the undisturbed Mara Triangle (S) or high human-disturbance Talek Region (T)? 
+
+### 1. Explore the data 
+Use glimpse() to get a feel for the variables. 
+Use barplot(table()) for categorical variables. 
+Use hist() for continuous variables. 
+Use "lm" and "loess" in ggplot to look at whether the relationship seems linear. 
+*You don't have to check ALL variables. At the least, the ones we have predictions about. 
+```{r, include=FALSE}
+load("HyenaInhibition.RData")
+
+#glance at the dataframe 
+tubes
+glimpse(tubes)
+
+barplot(table(tubes$SUCCESS))
+
+barplot(table(tubes$SEX))
+
+barplot(table(tubes$LIFE_HISTORY))
+
+barplot(table(tubes$RANK_CAT))
+
+barplot(table(tubes$PARK))
+
+barplot(table(tubes$AGE_CLASS_3))
+
+hist(tubes$RANK_NUM)
+hist(tubes$RANK_SC)
+hist(tubes$CLAN_SIZE_SC)
+
+ggplot(tubes, aes(RANK_SC, SUCCESS_BINARY)) + geom_smooth(method="loess") + geom_smooth(method="lm", color="red")
+ggplot(tubes, aes(CLAN_SIZE2, SUCCESS_BINARY)) + geom_smooth(method="loess") + geom_smooth(method="lm", color="red")
+ggplot(tubes, aes(SEX, SUCCESS_BINARY)) +geom_violin()
+
+
+
+```
+
+### 2. Create a full model. 
+This doesn't have to include all variables, but include as many as interest you and any interactions.
+
+After you've chosen your variables, create a new dataframe with JUST those variables and drop any missing values. Note that cohort size has many missing variables since we only know this for natal hyenas and this will exclude any and all immigrant males (which if you're looking at sex or life history is important). If you're curious about cohort size focus on females in a separate model. 
+
+Model selection only works if we have the same dataframe every time, and models automatically drop NAs. If variables have different NAs then the model will have a different sample size each time. 
+```{r}
+
+#create a new dataframe with just your selected variables for the full model and use drop_na()
+tubes2 <- tubes %>% dplyr::select(SUCCESS_BINARY, RANK_SC, CLAN_SIZE_SC, SEX, LIFE_HISTORY, AGE_CLASS_3, PARK, APPROACH, LATENCY_BINARY2, HIGH_RANKERS, MIGRATION, SUBJECT) %>% drop_na()
+
+#create a full model
+m1 <- glmmTMB(data=tubes2, SUCCESS_BINARY ~ RANK_SC*CLAN_SIZE_SC*SEX + SEX*LIFE_HISTORY + AGE_CLASS_3 + PARK + APPROACH + LATENCY_BINARY2 + HIGH_RANKERS + MIGRATION + (1|SUBJECT), family="binomial")
+
+#look at overall model output 
+summary(m1)
+
+#check r2 and icc
+icc(m1, by_group = TRUE)
+
+#consider dropping or adding random effects based on icc, but also consider the hierarchical nature of the data, there are some random effects that should remain always to control for repeated measures
+
+
+```
+
+### 3. Model Selection
+Choose forwards, backwards, or dredging. 
+Create your final model. 
+Check residuals, collinearity, and zero-inflation.  
+```{r}
+
+#backwards selection
+step(m1, direction="backward")
+
+
+#create the final model 
+mb <- glmmTMB(SUCCESS_BINARY ~ RANK_SC + CLAN_SIZE_SC + SEX + LIFE_HISTORY + 
+    APPROACH + LATENCY_BINARY2 + MIGRATION + RANK_SC:CLAN_SIZE_SC + 
+    RANK_SC:SEX + (1|SUBJECT), data=tubes2, family="binomial")
+summary(mb)
+
+#look at r2 and icc (if random effects)
+r2(mb)
+icc(mb)
+
+#check model fit (residuals,collinearity, zeroinflation)
+simulateResiduals(mb, plot=T)
+check_collinearity(mb)
+testDispersion(mb)
+testZeroInflation(mb)
+
+#look at estimated slopes or marginal means 
+estimate_slopes(mb, trend="CLAN_SIZE_SC")
+
+
+#use emmeans to make a tibble with predicted values 
+emms <- emmeans(mb, ~CLAN_SIZE_SC*RANK_SC, at=list(CLAN_SIZE_SC=seq(-1,2,.2), RANK_SC=c(-1,0,1)), type="response") %>% as_tibble()
+
+#create a plot using the raw and predicted values
+ggplot(data=tubes, aes(CLAN_SIZE_SC, SUCCESS_BINARY)) + geom_jitter(alpha=.5) + 
+  geom_line(data=emms, aes(CLAN_SIZE_SC, prob, color=as.factor(RANK_SC)),  linewidth=2)
+  
+
+```
