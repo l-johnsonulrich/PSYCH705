@@ -1,0 +1,234 @@
+---
+title: "Week 15 Demo"
+output: html_document
+date: "2025-11-26"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include=FALSE}
+#include = FALSE means that the code here will still run but it won't show the code or the output in the markdown file. 
+library(survival)
+library(survminer)
+
+
+```
+
+```{r}
+##############################################
+# Cox Proportional Hazards Demo with lung data
+##############################################
+
+# https://www.r-bloggers.com/2016/12/survival-analysis-basics/
+
+# --------------------------------------------
+# 1. Load and inspect the data
+# --------------------------------------------
+
+data(lung)
+head(lung)
+
+# The lung dataset:
+# time = survival time (days)
+# status = 1=censored (still alive at this time point), 2=dead
+# age = age in years
+# sex = 1=male, 2=female
+# ph.ecog = ECOG performance score (higher = worse)
+
+# Convert status to a 0/1 event indicator (1 = death)
+lung$status <- ifelse(lung$status == 2, 1, 0)
+
+hist(lung$time)
+hist(lung$age)
+hist(lung$ph.ecog)
+
+# --------------------------------------------
+# 2. Fit a Cox proportional hazards model
+# --------------------------------------------
+
+cox1 <- coxph(Surv(time, status) ~ age + sex + ph.ecog, data = lung)
+summary(cox1)
+
+# - exp(coef) gives the hazard ratio (HR)
+# - HR > 1 means increased hazard (higher death rate)
+# - HR < 1 means decreased hazard (lower death rate)
+# - Example: HR = 1.01 for age means each additional year increases hazard by 1%.
+# - This is an "instantaneous hazard ratio". At this point in time the risk of death is increased or decreased by X times. 
+
+# --------------------------------------------
+# 3. Plot survival curves from the Cox model
+# --------------------------------------------
+
+# Plot survival curves for males vs females
+fit_sex <- survfit(cox1, newdata = data.frame(
+  age = mean(lung$age, na.rm = TRUE),
+  sex = c(1, 2),                  # male and female
+  ph.ecog = mean(lung$ph.ecog, na.rm = TRUE)
+))
+#set age and ph.ecog scores to the mean score to hold constant 
+
+ggsurvplot(
+  fit_sex,
+  data = lung,
+  legend.labs = c("Male", "Female"),
+  legend.title = "Sex",
+  surv.median.line = "none",
+  ggtheme = theme_minimal()
+)
+
+# --------------------------------------------
+# 4. Plot cumulative event curves
+# --------------------------------------------
+
+ggsurvplot(
+  fit_sex,
+  data = lung,
+  fun = "event",         # cumulative hazard scale
+  legend.labs = c("Male", "Female"),
+  legend.title = "Sex",
+  ggtheme = theme_minimal()
+)
+
+# - Survival curve (fun="surv" or default): probability of surviving past time t.
+# - Cumulative event curve (fun="event"): probability of event has happened by time t (at or         before time t) 
+# - Cumulative hazard curve (fun="cumhaz"): accumulated hazard over time.
+#     It increases without an upper bound (not a probability).
+
+# --------------------------------------------
+# 5. Optional: check proportional hazards assumption
+# --------------------------------------------
+
+ph_test <- cox.zph(cox1)
+ph_test
+plot(ph_test)
+
+# If lines are ~flat and p-values > .05 → PH assumption reasonable
+# If a variable violates PH, it means: its hazard ratio changes over time, the variable's effect is not well-described by a single number (HR), and the Cox model needs adjustment/modification.
+
+
+
+```
+
+```{r}
+###############################################
+
+## PCA Demo: Movement / Space-Use Syndrome
+
+###############################################
+
+set.seed(123)
+
+####----------------------------------------------------------
+#### 1. Simulate a dataset
+####----------------------------------------------------------
+
+# We simulate two behavioral "syndromes":
+# Type A: "Bold / Wide-ranging"
+# Type B: "Cautious / Small home range"
+
+n_per_type <- 50
+
+# Bold animals (higher movement metrics)
+bold <- data.frame(
+  type = "Bold",
+  daily_distance = rnorm(n_per_type, mean = 12, sd = 2),   # km/day
+  home_range     = rnorm(n_per_type, mean = 30, sd = 5),   # km²
+  step_length    = rnorm(n_per_type, mean = 1.8, sd = 0.3),# km
+  turning_angle  = rnorm(n_per_type, mean = 35, sd = 10)   # deg (straighter)
+)
+
+# Cautious animals (lower movement)
+shy <- data.frame(
+  type = "Shy",
+  daily_distance = rnorm(n_per_type, mean = 5, sd = 1.5),
+  home_range     = rnorm(n_per_type, mean = 12, sd = 3),
+  step_length    = rnorm(n_per_type, mean = 0.7, sd = 0.2),
+  turning_angle  = rnorm(n_per_type, mean = 75, sd = 15)   # more tortuous
+)
+
+dat <- rbind(bold, shy) %>% dplyr::select(!c("type"))
+
+head(dat)
+
+####----------------------------------------------------------
+#### 2. Why standardize?
+####----------------------------------------------------------
+
+# PCA is sensitive to scale:
+# home_range is on the order of tens of km²
+# step_length is < 2 km
+# Without scaling, large-scale variables dominate the variance.
+
+
+hist(dat$daily_distance)
+hist(dat$home_range)
+hist(dat$step_length)
+hist(dat$turning_angle)
+
+####----------------------------------------------------------
+#### 3. Run PCA
+####----------------------------------------------------------
+
+#important to choose center and scale, scaling will make all variables z-scores so that the multi-dimeonsial shape of points isn't too skewed. 
+
+pca_out <- prcomp(dat, center = TRUE, scale. = TRUE) 
+summary(pca_out)
+
+# Interpretation:
+# - Standard deviations: how much spread or absolute size of variation along this axis
+# - Importance of components: % variance explained
+# - First PCs capture major variation in movement syndrome
+
+####----------------------------------------------------------
+#### 4. Scree Plot (variance explained)
+####----------------------------------------------------------
+
+eig_vals <- pca_out$sdev^2
+plot(eig_vals, type = "b",
+     xlab = "Principal Component",
+     ylab = "Eigenvalue",
+     main = "Scree Plot")
+
+# how many components are worth keeping for further analysis? 
+# where is the big drop-off in terms of PCs explaining variation? 
+
+####----------------------------------------------------------
+#### 5. Examine Loadings (how variables contribute to PCs)
+####----------------------------------------------------------
+
+pca_out$rotation
+
+# Loadings = correlation between variables and each principal component.
+# Large positive loading: variable increases PC score.
+# Large negative loading: variable decreases PC score.
+
+
+####----------------------------------------------------------
+#### 6. Biplot for interpretation
+####----------------------------------------------------------
+
+# Basic built-in biplot
+biplot(pca_out, col = c("gray40","red"))
+
+
+####----------------------------------------------------------
+#### 7. Examine Scores (each individual's location in PC space)
+####----------------------------------------------------------
+
+scores <- as.data.frame(pca_out$x)
+head(scores)
+hist(scores$PC1)
+hist(scores$PC2)
+
+pca_out$rotation # looks like high scores on PC1 is animals with small home range, short travel distance, shorter steps, and more tortuous paths
+
+scores <- scores %>% mutate(type = if_else(PC1 > 0, "shy", "bold"))
+
+ggplot(scores, aes(PC1, PC2, color=type)) +
+  geom_point(size = 3, alpha = 0.8) +
+  theme_minimal() +
+  labs(title = "PCA of Movement Syndrome",
+       subtitle = "Bold and Shy animals separate along PC1")
+
+
+```
