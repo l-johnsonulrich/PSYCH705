@@ -25,10 +25,10 @@ Your project will consist of two parts:
 Your final code should demonstrate the **full pipeline** of data science skills covered in class:
 1. **Data Import** – Load raw data from a file, API, or repository.  
 2. **Data Cleaning/Processing** – Handle missing values, outliers, or reformatting.  
-3. **Statistical Analysis** – Apply appropriate methods for your question. Show how you checked assumptions and model fit.  
-4. **Visualization** – Produce clear, publication-quality figures to support your conclusions.  
+3. **Statistical Analysis** – Apply appropriate methods for your question. Show how you checked assumptions and model fit with *plots* prior to fitting models and *post-hoc checks*.  
+4. **Visualization** – Produce clear, publication-quality figures to support your conclusions. Use *predicted* values in your plots.  
 
->  *Code does not have to be “perfect,” but it should be functional, reproducible, and show growth from your initial proposal to the final version.*
+>  *Code does not have to be “perfect,” but it should be functional, reproducible, and show growth from your initial proposal to the final version. Be sure to heavily annotate your code so that anyone can easily understand what every line of code does and why it is included!*
 
 ---
 
@@ -99,3 +99,5 @@ The proposal is graded and will be the starting point for your GitHub repo.
 - **Document your process**: Write clear comments and update your README as you go.  
 - **Seek feedback**: Use office hours and peer discussions to troubleshoot.  
 - **Practice your talk**: Time yourself and refine your slides for clarity.  
+
+
