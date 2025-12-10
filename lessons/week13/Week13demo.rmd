@@ -1,0 +1,464 @@
+---
+title: "Week12demo"
+output: html_document
+date: "2025-11-06"
+editor_options: 
+  chunk_output_type: console
+---
+
+Set up your workspace. 
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(glmmTMB)
+library(DHARMa)
+library(emmeans)
+library(modelbased)
+library(performance)
+library(dagitty)
+library(ggdag)
+library(interplot)
+
+setwd()
+
+```
+
+
+## Binary Data
+
+```{r}
+# DEMO: Bernoulli (binary 0/1) vs aggregated Binomial
+# Biological context:
+#  - Bernoulli: point-count surveys: at each survey did we detect a warbler (1) or not (0)?
+#  - Binomial: nest success: out of n eggs in a nest, how many hatched (0..n)?
+
+# -----------------------------------------------------------------------
+# 1) BERNOUILLI / BINARY DATA (one trial per observation)
+# Example story: 200 point-count surveys. Predictor: veg_density (0-3).
+# True process: probability of detection increases with veg_density.
+# -----------------------------------------------------------------------
+set.seed(2025)
+n <- 200
+veg <- runif(n, 0, 3)              # vegetation density (predictor)
+
+# True logistic model for probability of presence
+# intercept = -1, slope = 0.8  -> baseline ~0.27, increases with veg
+eta <- -1 + 0.8 * veg
+p <- plogis(eta)                   # inverse logit -> probability
+presence <- rbinom(n, size = 1, prob = p)  # Bernoulli draws
+
+bern_df <- data.frame(veg, presence)
+bern_df <- as_tibble(bern_df)
+bern_df
+
+#examine variables 
+hist(bern_df$veg)
+hist(bern_df$presence)
+
+
+# Fit Bernoulli logistic regression (GLM; can also be glmm if needed)
+m_bern <- glmmTMB(presence ~ veg, family = binomial(link = "logit"), data = bern_df)
+summary(m_bern)
+#log odd scale, so we use exp() to transform same as with Poisson
+exp(0.5219) #1.68
+# “For every one-unit increase in vegetation density, the odds of finding a warbler are about 1.6x times higher.”
+# 1.68 is an "odds-ratio" 
+
+# DHARMa diagnostics
+res_bern <- simulateResiduals(m_bern, plot = FALSE)
+plot(res_bern)             # QQ + residuals vs predicted
+#note the Dharma is creating simulated residuals and transforming them to a uniform distribution, with poisson or binomial families the actual residuals are NOT going to be normal or uniform (it acutally does this with the linear models too)
+#so for a linear model we're checking normality with the left plot, with a binomial model we can use the same left plot to check uniformity
+
+#looks wonky:
+hist(resid(m_bern))
+plot(predict(m_bern), resid(m_bern))
+
+testZeroInflation(res_bern)
+
+
+# Visualize predicted probability curve (with observed jitter)
+ggplot(bern_df, aes(x=veg, y=presence)) + geom_jitter(height=0.03, alpha=0.5) + 
+  geom_line(data=bern_df %>% mutate(prob=plogis(predict(m_bern))), aes(x=veg, y=prob))
+#similar to just taking the proportion of 1s... this gives the probability of detecting a bird at each vegetation level 
+#plogis transforms our predictors from the log-odds scale to probabilities (which matches the binary scale on the y-axis)
+
+
+# -----------------------------------------------------------------------
+# 2) BINOMIAL (aggregated) DATA
+# Example story: 100 nests observed. For each nest, we know number of eggs (n_eggs)
+# and number hatched (successes). Predictor: veg_density (nest-level).
+# -----------------------------------------------------------------------
+m_nests <- 100
+veg_n <- runif(m_nests, 0, 3)
+
+# Let clutch size vary (3-6 eggs)
+n_eggs <- sample(3:6, m_nests, replace = TRUE)
+
+# True underlying probability of hatching (depends on vegetation)
+eta2 <- -0.2 + 0.6 * veg_n
+p_n <- plogis(eta2)
+
+# Simulate successes out of n_eggs -> Binomial draws
+hatched <- rbinom(m_nests, size = n_eggs, prob = p_n)
+
+bin_df <- data.frame(veg = veg_n, hatched = hatched, n_eggs = n_eggs)
+bin_df <- as_tibble(bin_df)
+bin_df
+
+hist(bin_df$veg)
+hist(bin_df$hatched)
+hist(bin_df$n_eggs)
+
+# Fit binomial model using successes / failures (cbind)
+m_bin <- glmmTMB(cbind(hatched, n_eggs - hatched) ~ veg, family = binomial(link="logit"), data = bin_df)
+summary(m_bin)
+
+exp(0.53)
+
+# DHARMa diagnostics
+res_bin <- simulateResiduals(m_bin, plot = FALSE)
+plot(res_bin)
+testDispersion(res_bin)
+testZeroInflation(res_bin)  # can be informative if many nests had 0 hatchings
+
+# Visualizing model results 
+ggplot(bin_df, aes(x = veg, y = hatched / n_eggs, size = n_eggs)) +
+  geom_jitter(height = 0.02, alpha = 0.6) +
+  geom_line(data=bin_df %>% mutate(prob=plogis(predict(m_bin))), aes(x=veg, y=prob), size=1, color="blue")
+
+
+```
+
+
+## Proportion Data
+
+Or data that is continuous but bounded (e.g. -1 to 1 can be rescaled to 0 to 1)
+```{r}
+#Wipe workspace
+rm(list=ls())
+# Simulate data
+set.seed(123)
+n <- 150 # Number of sites
+# Predictor: habitat type
+habitat <- factor(sample(c("Forest", "Grassland", "Wetland"), n, replace = TRUE))
+# Simulate continuous proportion data using a Beta distribution
+library(extraDistr)
+prop_cover <- rbeta(n, shape1 = 2, shape2 = 5)
+# Add a few exact zeros and ones to simulate real data
+prop_cover[c(5, 20)] <- 0
+prop_cover[c(10, 50)] <- 1
+
+# Create data frame
+birds <- data.frame(prop_cover, habitat)
+
+# "Squeeze" the data so all values are strictly in (0,1), (Smithson & Verkuilen 2006)
+birds$prop_squeezed <- (birds$prop_cover * (n - 1) + 0.5) / n
+
+# What it does: slightly rescales all observations, not just 0s and 1s.
+# Why it works: it guarantees all values fall strictly in (0,1), preserves relative ranking, and stabilizes variance for Beta regression.
+# Pros: theoretically sound, preserves the Beta distribution shape, simple for small datasets.
+# Cons: slightly moves all data, not just the problematic boundaries.
+
+# 0-1 Adjustment 
+birds <- birds %>% mutate(prop_adj = case_when(
+  prop_cover == 0 ~ 0.000001,
+  prop_cover == 1 ~ 0.999999,
+  TRUE ~ prop_cover 
+))
+
+# What it does: keeps all other values exactly the same.
+# Pros: only alters the true zeros and ones — more intuitive, preserves original data for the vast majority of points.
+# Cons: extreme values can still slightly dominate the model fit (Beta logit link can be sensitive near 0 or 1).
+
+birds <- as_tibble(birds)
+birds
+
+# Explore the data
+hist(birds$prop_cover)
+hist(birds$prop_squeezed)
+hist(birds$prop_adj)
+boxplot(birds$prop_cover ~ birds$habitat)
+
+
+# Fit Beta regression
+m_beta <- glmmTMB(prop_adj ~ habitat,
+                  family = beta_family(link = "logit"),
+                  data = birds)
+
+summary(m_beta)
+
+# Check Model Fit
+res <- simulateResiduals(m_beta)
+plot(res)
+
+#Try with the squeezed data 
+m_beta2 <- glmmTMB(prop_squeezed ~ habitat,
+                  family = beta_family(link = "logit"),
+                  data = birds)
+
+summary(m_beta2)
+
+# Check Model Fit
+res <- simulateResiduals(m_beta2)
+plot(res)
+
+# Plot the results
+ggplot(birds, aes(x = habitat, y = prop_squeezed)) +
+  geom_jitter(width = 0.2, alpha = 0.4) +
+  geom_point(data=emmeans(m_beta2, ~ habitat, type="response") %>% as_tibble(), aes(x=habitat, y=response), color="red", size=3) +
+  geom_errorbar(data=emmeans(m_beta2, ~ habitat, type="response") %>% as_tibble(), aes(x=habitat, y=response, ymin = lower.CL, ymax = upper.CL), color="red", width=.5)
+
+
+
+```
+
+
+## Inter-rater reliability
+```{r}
+set.seed(123)
+
+# ===========================
+# Parameters
+# ===========================
+n_rats <- 10
+coders <- c("C1","C2")
+obs_time <- 600 # 10 min in seconds
+
+# ===========================
+# Function to simulate BORIS-style raw data with realistic reliabilities
+# ===========================
+simulate_boris_reliable2 <- function(n_rats, coders, obs_time){
+  all_data <- data.frame()
+  
+  for(rat in 1:n_rats){
+    
+    # -------------------
+    # First movement latency
+    # -------------------
+    true_latency <- runif(1, 5, 15)  # 5–15 seconds
+    
+    # Number of movement bouts
+    n_movements <- rpois(1, 3)  
+    if(n_movements==0) n_movements <- 1
+    
+    # Generate true movement bouts
+    t_cursor <- true_latency
+    movement_bouts <- list()
+    for(i in 1:n_movements){
+      dur <- rnorm(1, 60, 5)
+      dur <- min(dur, obs_time - t_cursor)
+      start <- t_cursor
+      stop <- t_cursor + dur
+      movement_bouts[[i]] <- c(start, stop)
+      t_cursor <- stop + runif(1, 1, 10)
+      if(t_cursor >= obs_time) break
+    }
+    
+    # -------------------
+    # Bipedal events (high reliability)
+    # -------------------
+    n_bipedal <- rpois(1, 5)
+    t_bipedal <- sort(runif(n_bipedal, 0, obs_time))
+    
+    # -------------------
+    # Startle events (moderate agreement)
+    # -------------------
+    n_true_startle <- rpois(1, 2)
+    if(n_true_startle>0){
+      t_startle <- sort(runif(n_true_startle, 10, obs_time-10))
+    } else {
+      t_startle <- numeric(0)
+    }
+    
+    # -------------------
+    # Coder-specific observations
+    # -------------------
+    for(coder in coders){
+      
+      # Movement: tiny jitter ±1s
+      for(b in movement_bouts){
+        start_c <- max(0, b[1] + rnorm(1, 0, 1))
+        stop_c <- max(start_c, b[2] + rnorm(1, 0, 1))
+        df_start <- data.frame(rat=rat, datetime=start_c, behavior="movement", event_type="start", coder=coder)
+        df_stop  <- data.frame(rat=rat, datetime=stop_c, behavior="movement", event_type="stop", coder=coder)
+        all_data <- rbind(all_data, df_start, df_stop)
+      }
+      
+      # Bipedal: tiny jitter ±1s
+      if(length(t_bipedal)>0){
+        t_bipedal_c <- t_bipedal + rnorm(length(t_bipedal), 0, 1)
+        df_bipedal <- data.frame(rat=rat, datetime=t_bipedal_c, behavior="bipedal", event_type="point", coder=coder)
+        all_data <- rbind(all_data, df_bipedal)
+      }
+      
+      # Startle: keep ~75% events, jitter ±5s, sometimes split event to alter counts
+      if(length(t_startle)>0){
+        keep <- rbinom(length(t_startle),1,0.75)==1
+        t_coder <- t_startle[keep] + rnorm(sum(keep),0,5)
+        if(length(t_coder)>0 & runif(1)<0.3) t_coder <- c(t_coder, t_coder[1]+0.1)  # split one event
+        if(length(t_coder)>0){
+          df_startle <- data.frame(rat=rat, datetime=sort(t_coder), behavior="startle", event_type="point", coder=coder)
+          all_data <- rbind(all_data, df_startle)
+        }
+      }
+    } # end coder loop
+  } # end rat loop
+  
+  # Sort
+  all_data <- all_data %>% arrange(rat, coder, datetime)
+  return(all_data)
+}
+
+# ===========================
+# Generate dataset
+# ===========================
+raw_data <- simulate_boris_reliable2(n_rats, coders, obs_time)
+
+raw_data <- as_tibble(raw_data)
+raw_data
+
+
+
+#Extracting data to a format we can do reliability analysis on. 
+#Let's get total movement duration, counts of startle and bipedal events, latency to first movement from the start of the trial, and also agreement on when startles happened with a buffer of +/- 5 seconds.
+
+# ===========================
+# 1. Total movement duration per rat × coder
+# ===========================
+movement_dur <- raw_data %>%
+  filter(behavior == "movement") %>%
+  group_by(rat, coder) %>%
+  arrange(datetime) %>%
+  summarise(
+    total_duration = sum(
+      ifelse(event_type=="stop",
+             datetime - lag(datetime), 0), na.rm = TRUE
+    )
+  ) %>% ungroup()
+
+movement_wide <- movement_dur %>%
+  pivot_wider(names_from=coder, values_from=total_duration)
+movement_wide
+
+#correlation test
+cor.test(movement_wide$C1, movement_wide$C2)
+
+#icc on the raw data
+irr::icc(movement_wide %>% dplyr::select(C1,C2))
+
+#similar to ICC in a GLMM
+performance::icc(glmmTMB(total_duration~1+(1|rat), data=movement_dur))
+
+
+
+# ===========================
+# 2. Counts of startle and bipedal events per rat × coder
+# ===========================
+counts <- raw_data %>%
+  filter(behavior %in% c("startle","bipedal"), event_type=="point") %>%
+  group_by(rat, coder, behavior) %>%
+  summarise(count = n()) %>% ungroup()
+
+counts_wide <- counts %>%
+  pivot_wider(names_from=coder, values_from=count, values_fill=0)
+
+counts_wide
+
+#kappa for agreemnt
+irr::kappa2(counts_wide %>% filter(behavior=="bipedal") %>% dplyr::select(C1, C2))
+irr::kappa2(counts_wide %>% filter(behavior=="startle") %>% dplyr::select(C1, C2))
+
+#correlation
+cor.test(~C1 + C2, data=counts_wide %>% filter(behavior=="bipedal"))
+cor.test(~C1 + C2, data=counts_wide %>% filter(behavior=="startle"))
+
+#icc
+irr::icc(counts_wide %>% filter(behavior=="bipedal") %>% dplyr::select(C1,C2))
+irr::icc(counts_wide %>% filter(behavior=="startle") %>% dplyr::select(C1,C2))
+
+# ===========================
+# 3. Latency to first movement per rat × coder
+# ===========================
+latency_movement <- raw_data %>%
+  filter(behavior=="movement", event_type=="start") %>%
+  group_by(rat, coder) %>%
+  summarise(latency = min(datetime)) %>% ungroup()
+
+latency_wide <- latency_movement %>%
+  pivot_wider(names_from=coder, values_from=latency)
+
+latency_wide
+
+#correlation
+cor.test(~C1 + C2, data=latency_wide)
+
+#icc
+irr::icc(latency_wide %>% dplyr::select(C1,C2))
+
+
+
+# ===========================
+# 4. Agreement on startles with ±5s buffer
+# ===========================
+
+# Filter startle events
+startles <- raw_data %>% filter(behavior=="startle")
+
+# Split by rat and coder
+startles_C1 <- startles %>% filter(coder=="C1") %>% arrange(rat, datetime)
+startles_C2 <- startles %>% filter(coder=="C2") %>% arrange(rat, datetime)
+
+buffer <- 5 # seconds
+
+# Function to check for matches per event
+event_matches <- function(df1, df2, buffer){
+  df1 %>%
+    rowwise() %>%
+    mutate(
+      match = any(abs(datetime - df2$datetime[df2$rat==rat]) <= buffer)
+    ) %>%
+    ungroup()
+}
+
+# Agreement for C1 events
+C1_matches <- event_matches(startles_C1, startles_C2, buffer) %>%
+  rename(event_agreement = match)
+
+# Agreement for C2 events
+C2_matches <- event_matches(startles_C2, startles_C1, buffer) %>%
+  rename(event_agreement = match)
+
+# Preview
+head(C1_matches)
+head(C2_matches)
+
+matches <- add_row(C1_matches, C2_matches) %>% arrange(rat, datetime) %>%
+  group_by(rat) %>%
+  mutate(event_id = cumsum(
+    row_number() == 1 | (datetime - lag(datetime) > buffer) | (coder == lag(coder))
+  )) %>%
+  ungroup() %>%
+  dplyr::select(rat, event_id, coder, event_agreement) %>%
+  pivot_wider(names_from = coder, values_from = event_agreement, values_fill = NA) %>%
+  arrange(rat, event_id) %>%
+  mutate(C1 = case_when(
+    C1==TRUE ~ TRUE,
+    C1==FALSE ~ TRUE, 
+    is.na(C1)  ~ FALSE), 
+    C2 = case_when(
+      C2 == TRUE ~ TRUE,
+      C2 == FALSE ~ TRUE, 
+      is.na(C2) ~ FALSE))
+
+
+#kappa for agreement
+irr::kappa2(matches %>% dplyr::select(C1, C2))
+
+
+```
+
+
+
+
